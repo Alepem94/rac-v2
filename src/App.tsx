@@ -69,13 +69,7 @@ const getDefaultDateRange = () => {
 };
 
 export default function App() {
-  const [dashboardMode, setDashboardMode] = useState<"selector" | "mensual" | "influencer">(() => {
-    try {
-      const saved = localStorage.getItem("rac-dashboard-mode");
-      if (saved === "mensual" || saved === "influencer") return saved;
-    } catch {}
-    return "selector";
-  });
+  const [dashboardMode, setDashboardMode] = useState<"selector" | "mensual" | "influencer">("selector");
 
   const {
     data,
