@@ -61,43 +61,6 @@ export const FacebookSection: React.FC<FacebookSectionProps> = ({
     { id: "paid", label: "Paid Media Facebook" },
   ];
 
-  if (subTab === "paid") {
-    return (
-      <div className="space-y-5">
-        <TabBar
-          tabs={tabs}
-          activeTab={subTab}
-          onChange={onSubTabChange}
-          brand={{ ...brand, primaryColor: FB_COLOR }}
-          size="sm"
-        />
-        {findings.length > 0 && (
-          <FindingsBanner
-            findings={findings}
-            brand={brand}
-            periodName={officialPeriod?.name}
-          />
-        )}
-        <PaidMediaSection
-          campaigns={data.facebookAds}
-          groupRules={data.groupRules}
-          globalExclusions={data.globalExclusions}
-          visibleMetrics={data.visibleMetrics}
-          platformSection="facebook_paid"
-          brand={brand}
-          dateRange={dateRange}
-          platformColor={FB_COLOR}
-          periods={data.periods}
-          officialPeriod={officialPeriod}
-          campaignMetas={data.campaignMetas}
-          deduplicatedReach={data.deduplicatedReach}
-          manualMetricOverrides={data.manualMetricOverrides}
-          platformKey="facebook"
-        />
-      </div>
-    );
-  }
-
   const SECTION = "facebook_overview";
   const overrides = data.manualMetricOverrides;
 
@@ -217,6 +180,43 @@ export const FacebookSection: React.FC<FacebookSectionProps> = ({
     if (remaining.length === 1 && keys.length >= 2) return [remaining[0], keys.find((k) => k !== remaining[0])!];
     return keys.slice(0, 2);
   })();
+
+  if (subTab === "paid") {
+    return (
+      <div className="space-y-5">
+        <TabBar
+          tabs={tabs}
+          activeTab={subTab}
+          onChange={onSubTabChange}
+          brand={{ ...brand, primaryColor: FB_COLOR }}
+          size="sm"
+        />
+        {findings.length > 0 && (
+          <FindingsBanner
+            findings={findings}
+            brand={brand}
+            periodName={officialPeriod?.name}
+          />
+        )}
+        <PaidMediaSection
+          campaigns={data.facebookAds}
+          groupRules={data.groupRules}
+          globalExclusions={data.globalExclusions}
+          visibleMetrics={data.visibleMetrics}
+          platformSection="facebook_paid"
+          brand={brand}
+          dateRange={dateRange}
+          platformColor={FB_COLOR}
+          periods={data.periods}
+          officialPeriod={officialPeriod}
+          campaignMetas={data.campaignMetas}
+          deduplicatedReach={data.deduplicatedReach}
+          manualMetricOverrides={data.manualMetricOverrides}
+          platformKey="facebook"
+        />
+      </div>
+    );
+  }
 
   return (
     <div className="space-y-5">

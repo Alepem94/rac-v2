@@ -60,44 +60,6 @@ export const TikTokSection: React.FC<TikTokSectionProps> = ({
     { id: "paid", label: "Paid Media TikTok" },
   ];
 
-  if (subTab === "paid") {
-    return (
-      <div className="space-y-5">
-        <TabBar
-          tabs={tabs}
-          activeTab={subTab}
-          onChange={onSubTabChange}
-          brand={{ ...brand, primaryColor: TT_ACCENT }}
-          size="sm"
-        />
-        {findings.length > 0 && (
-          <FindingsBanner
-            findings={findings}
-            brand={brand}
-            periodName={officialPeriod?.name}
-          />
-        )}
-        <PaidMediaSection
-          campaigns={data.tiktokAds}
-          groupRules={data.groupRules}
-          globalExclusions={data.globalExclusions}
-          visibleMetrics={data.visibleMetrics}
-          platformSection="tiktok_paid"
-          brand={brand}
-          dateRange={dateRange}
-          platformColor={TT_ACCENT}
-          periods={data.periods}
-          officialPeriod={officialPeriod}
-          campaignMetas={data.campaignMetas}
-          deduplicatedReach={data.deduplicatedReach}
-          manualMetricOverrides={data.manualMetricOverrides}
-          platformKey="tiktok"
-          forceGeneralGroup
-        />
-      </div>
-    );
-  }
-
   const SECTION = "tiktok_overview";
   const overrides = data.manualMetricOverrides;
 
@@ -195,6 +157,44 @@ export const TikTokSection: React.FC<TikTokSectionProps> = ({
     if (remaining.length === 1 && keys.length >= 2) return [remaining[0], keys.find((k) => k !== remaining[0])!];
     return keys.slice(0, 2);
   })();
+
+  if (subTab === "paid") {
+    return (
+      <div className="space-y-5">
+        <TabBar
+          tabs={tabs}
+          activeTab={subTab}
+          onChange={onSubTabChange}
+          brand={{ ...brand, primaryColor: TT_ACCENT }}
+          size="sm"
+        />
+        {findings.length > 0 && (
+          <FindingsBanner
+            findings={findings}
+            brand={brand}
+            periodName={officialPeriod?.name}
+          />
+        )}
+        <PaidMediaSection
+          campaigns={data.tiktokAds}
+          groupRules={data.groupRules}
+          globalExclusions={data.globalExclusions}
+          visibleMetrics={data.visibleMetrics}
+          platformSection="tiktok_paid"
+          brand={brand}
+          dateRange={dateRange}
+          platformColor={TT_ACCENT}
+          periods={data.periods}
+          officialPeriod={officialPeriod}
+          campaignMetas={data.campaignMetas}
+          deduplicatedReach={data.deduplicatedReach}
+          manualMetricOverrides={data.manualMetricOverrides}
+          platformKey="tiktok"
+          forceGeneralGroup
+        />
+      </div>
+    );
+  }
 
   return (
     <div className="space-y-5">

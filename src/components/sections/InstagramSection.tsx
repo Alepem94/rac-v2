@@ -61,43 +61,6 @@ export const InstagramSection: React.FC<InstagramSectionProps> = ({
     { id: "paid", label: "Paid Media Instagram" },
   ];
 
-  if (subTab === "paid") {
-    return (
-      <div className="space-y-5">
-        <TabBar
-          tabs={tabs}
-          activeTab={subTab}
-          onChange={onSubTabChange}
-          brand={{ ...brand, primaryColor: IG_COLOR }}
-          size="sm"
-        />
-        {findings.length > 0 && (
-          <FindingsBanner
-            findings={findings}
-            brand={brand}
-            periodName={officialPeriod?.name}
-          />
-        )}
-        <PaidMediaSection
-          campaigns={data.instagramAds}
-          groupRules={data.groupRules}
-          globalExclusions={data.globalExclusions}
-          visibleMetrics={data.visibleMetrics}
-          platformSection="instagram_paid"
-          brand={brand}
-          dateRange={dateRange}
-          platformColor={IG_COLOR}
-          periods={data.periods}
-          officialPeriod={officialPeriod}
-          campaignMetas={data.campaignMetas}
-          deduplicatedReach={data.deduplicatedReach}
-          manualMetricOverrides={data.manualMetricOverrides}
-          platformKey="instagram"
-        />
-      </div>
-    );
-  }
-
   const SECTION = "instagram_overview";
   const overrides = data.manualMetricOverrides;
 
@@ -210,6 +173,43 @@ export const InstagramSection: React.FC<InstagramSectionProps> = ({
     if (remaining.length === 1 && keys.length >= 2) return [remaining[0], keys.find((k) => k !== remaining[0])!];
     return keys.slice(0, 2);
   })();
+
+  if (subTab === "paid") {
+    return (
+      <div className="space-y-5">
+        <TabBar
+          tabs={tabs}
+          activeTab={subTab}
+          onChange={onSubTabChange}
+          brand={{ ...brand, primaryColor: IG_COLOR }}
+          size="sm"
+        />
+        {findings.length > 0 && (
+          <FindingsBanner
+            findings={findings}
+            brand={brand}
+            periodName={officialPeriod?.name}
+          />
+        )}
+        <PaidMediaSection
+          campaigns={data.instagramAds}
+          groupRules={data.groupRules}
+          globalExclusions={data.globalExclusions}
+          visibleMetrics={data.visibleMetrics}
+          platformSection="instagram_paid"
+          brand={brand}
+          dateRange={dateRange}
+          platformColor={IG_COLOR}
+          periods={data.periods}
+          officialPeriod={officialPeriod}
+          campaignMetas={data.campaignMetas}
+          deduplicatedReach={data.deduplicatedReach}
+          manualMetricOverrides={data.manualMetricOverrides}
+          platformKey="instagram"
+        />
+      </div>
+    );
+  }
 
   return (
     <div className="space-y-5">
