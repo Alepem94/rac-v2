@@ -19,6 +19,7 @@ import { GoogleAdsSection } from "./components/sections/GoogleAdsSection";
 import { GoogleAnalyticsSection } from "./components/sections/GoogleAnalyticsSection";
 import { useGoogleSheets } from "./hooks/useGoogleSheets";
 import { detectOfficialPeriod } from "./utils/grouping";
+import { ErrorBoundary } from "./components/ui/ErrorBoundary";
 
 const TikTokIcon = () => (
   <svg width="15" height="15" viewBox="0 0 24 24" fill="currentColor">
@@ -380,7 +381,9 @@ export default function App() {
           </div>
         )}
 
-        {renderContent()}
+        <ErrorBoundary section="Dashboard">
+          {renderContent()}
+        </ErrorBoundary>
       </main>
 
       <footer
