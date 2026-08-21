@@ -1,4 +1,4 @@
-import { format } from "date-fns";
+import { format, startOfISOWeek, addDays } from "date-fns";
 import { es } from "date-fns/locale";
 
 export type Frequency = "diaria" | "semanal" | "mensual" | "anual";
@@ -27,11 +27,8 @@ export const getBucketKey = (dateStr: string, frequency: Frequency): string => {
     case "diaria":
       return dateStr; // YYYY-MM-DD
     case "semanal": {
-      // Inicio de semana ISO (lunes)
-      const day = d.getDay(); // 0 dom, 1 lun...
-      const diff = d.getDate() - day + (day === 0 ? -6 : 1);
-      const monday = new Date(d);
-      monday.setDate(diff);
+      // Inicio de semana ISO (lunes) usando date-fns para evitar off-by-one
+      const monday = startOfISOWeek(d);
       return monday.toISOString().split("T")[0];
     }
     case "mensual":
@@ -51,8 +48,7 @@ export const getBucketLabel = (bucketKey: string, frequency: Frequency): string 
     }
     if (frequency === "semanal") {
       const d = parseISODate(bucketKey);
-      const end = new Date(d);
-      end.setDate(end.getDate() + 6);
+      const end = addDays(d, 6);
       return `${format(d, "dd MMM", { locale: es })} - ${format(end, "dd MMM", { locale: es })}`;
     }
     if (frequency === "mensual") {

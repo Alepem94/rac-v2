@@ -338,28 +338,45 @@ export default function App() {
           </div>
         )}
 
-        {loading && !data.facebookAds.length && (
+        {loading && (
           <div
-            className="rounded-2xl p-6 flex items-center justify-center gap-3"
-            style={{ backgroundColor: brand.cardBg }}
+            className="rounded-2xl p-6 flex items-center justify-center gap-3 border"
+            style={{ backgroundColor: brand.cardBg, borderColor: `${brand.primaryColor}15` }}
           >
             <RefreshCw size={18} className="animate-spin" style={{ color: brand.primaryColor }} />
             <span className="text-sm" style={{ color: brand.textColor }}>
-              Cargando datos desde Google Sheets…
+              Cargando datos desde Google Sheets… (puede tardar 5-10s por 26 hojas)
             </span>
           </div>
         )}
 
         {error && (
           <div
-            className="rounded-2xl p-4 border text-sm"
+            className="rounded-2xl p-4 border text-sm flex items-start justify-between gap-3"
             style={{
-              backgroundColor: "#FEE2E2",
-              borderColor: "#FECACA",
-              color: "#991B1B",
+              backgroundColor: error.includes("parciales") || error.includes("caché") ? "#FFFBEB" : "#FEE2E2",
+              borderColor: error.includes("parciales") || error.includes("caché") ? "#FDE68A" : "#FECACA",
+              color: error.includes("parciales") || error.includes("caché") ? "#92400E" : "#991B1B",
             }}
           >
-            Error al cargar datos: {error}
+            <span className="flex-1">Error al cargar datos: {error}</span>
+            <button
+              onClick={() => fetchSheetData()}
+              className="shrink-0 px-3 py-1 rounded-lg text-xs font-semibold"
+              style={{ backgroundColor: brand.primaryColor, color: "#fff" }}
+            >
+              Reintentar
+            </button>
+          </div>
+        )}
+
+        {!loading && !error && !data.facebookInsights.length && !data.facebookAds.length && !data.googleAds.length && (
+          <div
+            className="rounded-2xl p-6 border text-center"
+            style={{ backgroundColor: brand.cardBg, borderColor: `${brand.primaryColor}15`, color: `${brand.textColor}77` }}
+          >
+            <div className="text-sm font-medium" style={{ color: brand.textColor }}>No hay datos para el rango {dateRange.start} → {dateRange.end}</div>
+            <div className="text-xs mt-1">Prueba ampliar el rango de fechas o selecciona un periodo oficial arriba.</div>
           </div>
         )}
 

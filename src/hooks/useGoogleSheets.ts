@@ -99,8 +99,46 @@ const RANGES = {
   gAdsKeywords: "GAds_Top_Keywords!A:G",
 };
 
+const CACHE_KEY = "rac-dashboard-cache-v2";
+const CACHE_TS_KEY = "rac-dashboard-cache-ts";
+
+const sleep = (ms: number) => new Promise((r) => setTimeout(r, ms));
+
+const fetchWithRetry = async (url: string, retries = 3): Promise<Response> => {
+  let lastErr: Error | null = null;
+  for (let attempt = 0; attempt < retries; attempt++) {
+    try {
+      const res = await fetch(url);
+      if (res.ok) return res;
+      // 429 o 5xx => retry
+      if (res.status === 429 || res.status >= 500) {
+        const delay = Math.pow(2, attempt) * 1000 + Math.random() * 500;
+        await sleep(delay);
+        lastErr = new Error(`HTTP ${res.status} ${res.statusText}`);
+        continue;
+      }
+      throw new Error(`HTTP ${res.status} ${res.statusText}`);
+    } catch (e) {
+      lastErr = e instanceof Error ? e : new Error(String(e));
+      if (attempt < retries - 1) {
+        const delay = Math.pow(2, attempt) * 800 + Math.random() * 400;
+        await sleep(delay);
+      }
+    }
+  }
+  throw lastErr || new Error("Fetch failed");
+};
+
 export const useGoogleSheets = () => {
-  const [data, setData] = useState<DashboardData>(DEFAULT_DATA);
+  const [data, setData] = useState<DashboardData>(() => {
+    try {
+      if (typeof window !== "undefined" && typeof localStorage !== "undefined") {
+        const cached = localStorage.getItem(CACHE_KEY);
+        if (cached) return JSON.parse(cached) as DashboardData;
+      }
+    } catch { /* ignore */ }
+    return DEFAULT_DATA;
+  });
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [connected, setConnected] = useState(false);
@@ -114,65 +152,61 @@ export const useGoogleSheets = () => {
         const url = `https://sheets.googleapis.com/v4/spreadsheets/${config.sheetId}/values/${encodeURIComponent(
           range,
         )}?key=${config.apiKey}`;
-        const res = await fetch(url);
-        if (!res.ok) throw new Error(`Error fetching "${range}": ${res.statusText}`);
+        const res = await fetchWithRetry(url, 3);
         const json = await res.json();
         return (json.values || []) as string[][];
       };
 
-      const [
-        configRows,
-        periodsRows,
-        rulesRows,
-        visibleMetricsRows,
-        dedupReachRows,
-        manualMetricsRows,
-        findingsRows,
-        campaignMetasRows,
-        fbInsightRows,
-        igInsightRows,
-        ttInsightRows,
-        fbAdsRows,
-        igAdsRows,
-        ttAdsRows,
-        gAdsRows,
-        gaRows,
-        gaCountriesRows,
-        gaDevicesRows,
-        gaTopPagesRows,
-        topFBRows,
-        topIGRows,
-        topTTRows,
-        gAdsVideoRows,
-        gAdsDisplayRows,
-        gAdsKeywordsRows,
-      ] = await Promise.all([
-        fetchRange(RANGES.config),
-        fetchRange(RANGES.periods),
-        fetchRange(RANGES.rules),
-        fetchRange(RANGES.visibleMetrics),
-        fetchRange(RANGES.dedupReach),
-        fetchRange(RANGES.manualMetrics),
-        fetchRange(RANGES.findings),
-        fetchRange(RANGES.campaignMetas),
-        fetchRange(RANGES.fbInsights),
-        fetchRange(RANGES.igInsights),
-        fetchRange(RANGES.ttInsights),
-        fetchRange(RANGES.fbAds),
-        fetchRange(RANGES.igAds),
-        fetchRange(RANGES.ttAds),
-        fetchRange(RANGES.gAds),
-        fetchRange(RANGES.ga),
-        fetchRange(RANGES.gaCountries),
-        fetchRange(RANGES.gaDevices),
-        fetchRange(RANGES.gaTopPages),
-        fetchRange(RANGES.topFB),
-        fetchRange(RANGES.topIG),
-        fetchRange(RANGES.topTT),
-        fetchRange(RANGES.gAdsVideo),
-        fetchRange(RANGES.gAdsDisplay),
-        fetchRange(RANGES.gAdsKeywords),
-      ]);
+      // Concurrencia limitada en lotes de 6 para evitar 429
+      const entries = Object.entries(RANGES) as [keyof typeof RANGES, string][];
+      const batchSize = 6;
+      const results: Record<string, string[][]> = {};
+      const failedRanges: string[] = [];
+      for (let i = 0; i < entries.length; i += batchSize) {
+        const batch = entries.slice(i, i + batchSize);
+        const batchResults = await Promise.allSettled(batch.map(([key, range]) => fetchRange(range).then((v) => ({ key, v }))));
+        batchResults.forEach((r, idx) => {
+          const [key] = batch[idx];
+          if (r.status === "fulfilled") {
+            results[key] = r.value.v;
+          } else {
+            failedRanges.push(key);
+            results[key] = [];
+            console.warn(`[Sheets] fallo ${key}:`, r.reason);
+          }
+        });
+        if (i + batchSize < entries.length) await sleep(200);
+      }
+
+      if (failedRanges.length > 0 && failedRanges.length === entries.length) {
+        throw new Error(`No se pudo cargar ninguna hoja: ${failedRanges.join(", ")}`);
+      }
+
+      const configRows = results.config || [];
+      const periodsRows = results.periods || [];
+      const rulesRows = results.rules || [];
+      const visibleMetricsRows = results.visibleMetrics || [];
+      const dedupReachRows = results.dedupReach || [];
+      const manualMetricsRows = results.manualMetrics || [];
+      const findingsRows = results.findings || [];
+      const campaignMetasRows = results.campaignMetas || [];
+      const fbInsightRows = results.fbInsights || [];
+      const igInsightRows = results.igInsights || [];
+      const ttInsightRows = results.ttInsights || [];
+      const fbAdsRows = results.fbAds || [];
+      const igAdsRows = results.igAds || [];
+      const ttAdsRows = results.ttAds || [];
+      const gAdsRows = results.gAds || [];
+      const gaRows = results.ga || [];
+      const gaCountriesRows = results.gaCountries || [];
+      const gaDevicesRows = results.gaDevices || [];
+      const gaTopPagesRows = results.gaTopPages || [];
+      const topFBRows = results.topFB || [];
+      const topIGRows = results.topIG || [];
+      const topTTRows = results.topTT || [];
+      const gAdsVideoRows = results.gAdsVideo || [];
+      const gAdsDisplayRows = results.gAdsDisplay || [];
+      const gAdsKeywordsRows = results.gAdsKeywords || [];
 
       // ---- Configuración (clave, valor, descripción) — filas 3+
       const brandMap: Record<string, string> = {};
@@ -421,13 +455,14 @@ export const useGoogleSheets = () => {
       const ttAdsRaw = ttAdsRows.slice(3).map((r) => parseTtRow(r)).filter((c) => c.campaignName && c.date);
 
       // Facebook: campañas del sheet Facebook_Ads que tengan FB, Facebook o META en el nombre
+      // Fix: usar word boundary para no fallar con "META- Extra" o "FB-"
       const facebookAds: PaidCampaignRow[] = fbAdsRaw
-        .filter((c) => / FB /i.test(c.campaignName) || /facebook/i.test(c.campaignName) || / META /i.test(c.campaignName))
+        .filter((c) => /\bFB\b/i.test(c.campaignName) || /facebook/i.test(c.campaignName) || /\bMETA\b/i.test(c.campaignName))
         .map((c) => ({ ...c, platform: "Facebook" }));
 
       // Instagram: campañas del sheet Instagram_Ads que tengan IG o Instagram en el nombre
       const instagramAds: PaidCampaignRow[] = igAdsRaw
-        .filter((c) => / IG /i.test(c.campaignName) || /instagram/i.test(c.campaignName))
+        .filter((c) => /\bIG\b/i.test(c.campaignName) || /instagram/i.test(c.campaignName))
         .map((c) => ({ ...c, platform: "Instagram" }));
 
       const tiktokAds = ttAdsRaw;
@@ -543,7 +578,7 @@ export const useGoogleSheets = () => {
         avgTime: parseNumber(r[4]),
       })).filter((p) => p.url);
 
-      setData({
+      const newData: DashboardData = {
         brand,
         periods,
         groupRules,
@@ -571,10 +606,36 @@ export const useGoogleSheets = () => {
         gAdsTopVideo,
         gAdsTopDisplay,
         gAdsTopKeywords,
-      });
+      };
+      setData(newData);
+      try {
+        if (typeof window !== "undefined" && typeof localStorage !== "undefined") {
+          localStorage.setItem(CACHE_KEY, JSON.stringify(newData));
+          localStorage.setItem(CACHE_TS_KEY, new Date().toISOString());
+        }
+      } catch { /* quota */ }
       setConnected(true);
+      if (failedRanges.length > 0) {
+        setError(`Algunas hojas no cargaron (${failedRanges.join(", ")}). Mostrando datos parciales. Reintenta con el botón Actualizar.`);
+        setConnected(false);
+      } else {
+        setError(null);
+      }
     } catch (err: unknown) {
       const msg = err instanceof Error ? err.message : "Error al conectar con Google Sheets";
+      // Fallback a cache si existe
+      try {
+        if (typeof window !== "undefined" && typeof localStorage !== "undefined") {
+          const cached = localStorage.getItem(CACHE_KEY);
+          if (cached) {
+            const parsed = JSON.parse(cached) as DashboardData;
+            setData(parsed);
+            setError(`${msg} — Mostrando datos en caché de ${localStorage.getItem(CACHE_TS_KEY) || "sesión anterior"}.`);
+            setConnected(false);
+            return;
+          }
+        }
+      } catch { /* ignore */ }
       setError(msg);
       setConnected(false);
     } finally {
