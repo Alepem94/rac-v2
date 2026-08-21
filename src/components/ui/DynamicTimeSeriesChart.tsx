@@ -94,33 +94,41 @@ export const DynamicTimeSeriesChart: React.FC<DynamicTimeSeriesChartProps> = ({
 
   // Ventana fija: diaria 15d, semanal 4sem, mensual 12m, anual 5a
   const windowFilteredData = useMemo(() => {
-    if (!rawData.length) return [];
-    if (!fixedWindow) return rawData;
-    const maxDateStr = rawData.reduce((max, r) => (r.date > max ? r.date : max), rawData[0].date);
-    const maxDate = parseLocalDate(maxDateStr);
-    let startDate: Date;
-    switch (frequency) {
-      case "diaria":
-        startDate = addDays(maxDate, -14);
-        break;
-      case "semanal":
-        startDate = addDays(maxDate, -27); // 4 semanas
-        break;
-      case "mensual": {
-        const d = addMonths(maxDate, -11);
-        startDate = new Date(d.getFullYear(), d.getMonth(), 1);
-        break;
+    try {
+      if (!rawData.length) return [];
+      if (!fixedWindow) return rawData;
+      const maxDateStr = rawData.reduce((max, r) => (r.date && r.date > max ? r.date : max), rawData[0]?.date || "");
+      if (!maxDateStr || typeof maxDateStr !== "string" || !/^\d{4}-\d{2}-\d{2}/.test(maxDateStr)) return rawData;
+      const maxDate = parseLocalDate(maxDateStr);
+      if (isNaN(maxDate.getTime())) return rawData;
+      let startDate: Date;
+      switch (frequency) {
+        case "diaria":
+          startDate = addDays(maxDate, -14);
+          break;
+        case "semanal":
+          startDate = addDays(maxDate, -27); // 4 semanas
+          break;
+        case "mensual": {
+          const d = addMonths(maxDate, -11);
+          startDate = new Date(d.getFullYear(), d.getMonth(), 1);
+          break;
+        }
+        case "anual": {
+          const d = addYears(maxDate, -4); // últimos 5 años
+          startDate = new Date(d.getFullYear(), 0, 1);
+          break;
+        }
+        default:
+          startDate = addDays(maxDate, -14);
       }
-      case "anual": {
-        const d = addYears(maxDate, -4); // últimos 5 años
-        startDate = new Date(d.getFullYear(), 0, 1);
-        break;
-      }
-      default:
-        startDate = addDays(maxDate, -14);
+      if (isNaN(startDate.getTime())) return rawData;
+      const startStr = format(startDate, "yyyy-MM-dd");
+      return rawData.filter((r) => r.date && r.date >= startStr && r.date <= maxDateStr);
+    } catch (e) {
+      console.error("[DynamicChart] window filter failed", e);
+      return rawData;
     }
-    const startStr = format(startDate, "yyyy-MM-dd");
-    return rawData.filter((r) => r.date >= startStr && r.date <= maxDateStr);
   }, [rawData, frequency, fixedWindow]);
 
   const chartData = useMemo(() => {
