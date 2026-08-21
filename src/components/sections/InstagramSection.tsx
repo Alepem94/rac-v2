@@ -1,23 +1,12 @@
 import React, { useMemo } from "react";
-import {
-  AreaChart,
-  Area,
-  XAxis,
-  YAxis,
-  CartesianGrid,
-  Tooltip,
-  ResponsiveContainer,
-  BarChart,
-  Bar,
-} from "recharts";
 import { Users, Eye, Heart, UserPlus, Camera } from "lucide-react";
 import { TabBar } from "../ui/TabBar";
 import { MetricCard } from "../ui/MetricCard";
-import { ChartCard } from "../ui/ChartCard";
 import { TopPostEmbedCard } from "../ui/TopPostEmbedCard";
 import { ReachCard } from "../ui/ReachCard";
 import { FindingsBanner } from "../ui/FindingsBanner";
 import { PaidMediaSection } from "./PaidMediaSection";
+import { DynamicTimeSeriesChart, MetricOption } from "../ui/DynamicTimeSeriesChart";
 import { DashboardData, BrandConfig, OfficialPeriod } from "../../types";
 import {
   filterByDateRange,
@@ -28,6 +17,7 @@ import {
 } from "../../utils/formatters";
 import { resolveMetricValue, hasSectionManualData } from "../../utils/manualOverrides";
 import { ManualDataLegend } from "../ui/ManualDataLegend";
+import { sortByDateAsc } from "../../utils/chartAggregation";
 
 interface InstagramSectionProps {
   data: DashboardData;
@@ -48,24 +38,12 @@ export const InstagramSection: React.FC<InstagramSectionProps> = ({
   onSubTabChange,
   officialPeriod,
 }) => {
-  const filtered = useMemo(
-    () => filterByDateRange(data.instagramInsights, dateRange.start, dateRange.end),
-    [data.instagramInsights, dateRange],
-  );
+  const filtered = useMemo(() => {
+    const f = filterByDateRange(data.instagramInsights, dateRange.start, dateRange.end);
+    return sortByDateAsc(f);
+  }, [data.instagramInsights, dateRange]);
 
   const posts = data.topPostsIG;
-
-  const chartData = useMemo(
-    () =>
-      filtered.map((d) => ({
-        date: d.date.slice(5),
-        Alcance: d.reach,
-        Impresiones: d.impressions,
-        Engagement: d.engagement,
-        "Nuevos Seguidores": d.newFollowers,
-      })),
-    [filtered],
-  );
 
   const visibleCards = data.visibleMetrics
     .filter((v) => v.section === "instagram_overview" && v.visible)
@@ -169,6 +147,70 @@ export const InstagramSection: React.FC<InstagramSectionProps> = ({
     newFollowers: UserPlus,
   };
 
+  const rawChartData = useMemo(
+    () =>
+      filtered.map((d) => ({
+        date: d.date,
+        reach: d.reach,
+        impressions: d.impressions,
+        engagement: d.engagement,
+        interactions: d.engagement,
+        followers: d.followers,
+        profileVisits: d.profileVisits,
+        newFollowers: d.newFollowers,
+      })),
+    [filtered],
+  );
+
+  const colorMap: Record<string, string> = {
+    followers: IG_COLOR,
+    reach: IG_COLOR,
+    impressions: brand.accentColor,
+    engagement: "#EC4899",
+    interactions: "#EC4899",
+    profileVisits: "#8B5CF6",
+    newFollowers: "#10B981",
+  };
+
+  const fallbackMetrics: MetricOption[] = [
+    { key: "reach", label: "Alcance", color: colorMap["reach"] },
+    { key: "impressions", label: "Impresiones", color: colorMap["impressions"] },
+    { key: "engagement", label: "Engagement", color: colorMap["engagement"] },
+    { key: "newFollowers", label: "Nuevos Seguidores", color: colorMap["newFollowers"] },
+    { key: "followers", label: "Seguidores", color: colorMap["followers"] },
+    { key: "profileVisits", label: "Visitas Perfil", color: colorMap["profileVisits"] },
+  ];
+
+  const availableMetrics: MetricOption[] = (() => {
+    if (visibleCards.length > 0) {
+      return visibleCards.map((m) => ({
+        key: m.metric,
+        label: m.label,
+        color: colorMap[m.metric] || IG_COLOR,
+      }));
+    }
+    return fallbackMetrics;
+  })();
+
+  const chart1Defaults = (() => {
+    const keys = availableMetrics.map((m) => m.key);
+    const pref = ["reach", "impressions"];
+    const f = pref.filter((k) => keys.includes(k));
+    if (f.length >= 2) return f.slice(0, 2);
+    if (f.length === 1 && keys.length >= 2) return [f[0], keys.find((k) => k !== f[0])!];
+    return keys.slice(0, 2);
+  })();
+  const chart2Defaults = (() => {
+    const keys = availableMetrics.map((m) => m.key);
+    const pref = ["engagement", "newFollowers", "interactions", "profileVisits"];
+    const f = pref.filter((k) => keys.includes(k));
+    if (f.length >= 2) return f.slice(0, 2);
+    const remaining = keys.filter((k) => !chart1Defaults.includes(k));
+    if (remaining.length >= 2) return remaining.slice(0, 2);
+    if (remaining.length === 1 && keys.length >= 2) return [remaining[0], keys.find((k) => k !== remaining[0])!];
+    return keys.slice(0, 2);
+  })();
+
   return (
     <div className="space-y-5">
       <TabBar
@@ -222,68 +264,28 @@ export const InstagramSection: React.FC<InstagramSectionProps> = ({
       </div>
 
       <div className="grid grid-cols-1 lg:grid-cols-2 gap-4">
-        <ChartCard title="Alcance e Impresiones diarias" brand={brand}>
-          <ResponsiveContainer width="100%" height={220}>
-            <AreaChart data={chartData}>
-              <defs>
-                <linearGradient id="igReach" x1="0" y1="0" x2="0" y2="1">
-                  <stop offset="5%" stopColor={IG_COLOR} stopOpacity={0.3} />
-                  <stop offset="95%" stopColor={IG_COLOR} stopOpacity={0} />
-                </linearGradient>
-                <linearGradient id="igImpr" x1="0" y1="0" x2="0" y2="1">
-                  <stop offset="5%" stopColor={brand.accentColor} stopOpacity={0.3} />
-                  <stop offset="95%" stopColor={brand.accentColor} stopOpacity={0} />
-                </linearGradient>
-              </defs>
-              <CartesianGrid strokeDasharray="3 3" stroke={`${brand.textColor}10`} />
-              <XAxis dataKey="date" tick={{ fontSize: 10, fill: `${brand.textColor}77` }} />
-              <YAxis
-                tick={{ fontSize: 10, fill: `${brand.textColor}77` }}
-                tickFormatter={(v) => formatNumber(v)}
-              />
-              <Tooltip
-                contentStyle={{
-                  fontSize: 11,
-                  borderRadius: 8,
-                  border: `1px solid ${IG_COLOR}33`,
-                }}
-              />
-              <Area
-                type="monotone"
-                dataKey="Alcance"
-                stroke={IG_COLOR}
-                fill="url(#igReach)"
-                strokeWidth={2}
-              />
-              <Area
-                type="monotone"
-                dataKey="Impresiones"
-                stroke={brand.accentColor}
-                fill="url(#igImpr)"
-                strokeWidth={2}
-              />
-            </AreaChart>
-          </ResponsiveContainer>
-        </ChartCard>
-
-        <ChartCard title="Engagement y Nuevos Seguidores" brand={brand}>
-          <ResponsiveContainer width="100%" height={220}>
-            <BarChart data={chartData}>
-              <CartesianGrid strokeDasharray="3 3" stroke={`${brand.textColor}10`} />
-              <XAxis dataKey="date" tick={{ fontSize: 10, fill: `${brand.textColor}77` }} />
-              <YAxis tick={{ fontSize: 10, fill: `${brand.textColor}77` }} />
-              <Tooltip
-                contentStyle={{
-                  fontSize: 11,
-                  borderRadius: 8,
-                  border: `1px solid ${IG_COLOR}33`,
-                }}
-              />
-              <Bar dataKey="Engagement" fill={IG_COLOR} radius={[4, 4, 0, 0]} />
-              <Bar dataKey="Nuevos Seguidores" fill="#10B981" radius={[4, 4, 0, 0]} />
-            </BarChart>
-          </ResponsiveContainer>
-        </ChartCard>
+        <DynamicTimeSeriesChart
+          brand={brand}
+          title="Gráfico 1 · Alcance e Impresiones"
+          subtitle="Selecciona frecuencia y métricas"
+          rawData={rawChartData}
+          availableMetrics={availableMetrics}
+          defaultMetrics={chart1Defaults}
+          chartType="area"
+          idPrefix="ig-1"
+          lastKeys={["followers"]}
+        />
+        <DynamicTimeSeriesChart
+          brand={brand}
+          title="Gráfico 2 · Engagement y Seguidores"
+          subtitle="Selecciona frecuencia y métricas"
+          rawData={rawChartData}
+          availableMetrics={availableMetrics}
+          defaultMetrics={chart2Defaults}
+          chartType="bar"
+          idPrefix="ig-2"
+          lastKeys={["followers"]}
+        />
       </div>
 
       {posts.length > 0 && (

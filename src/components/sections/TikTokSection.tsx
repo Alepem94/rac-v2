@@ -1,22 +1,11 @@
 import React, { useMemo } from "react";
-import {
-  AreaChart,
-  Area,
-  XAxis,
-  YAxis,
-  CartesianGrid,
-  Tooltip,
-  ResponsiveContainer,
-  BarChart,
-  Bar,
-} from "recharts";
 import { Users, Heart, MessageCircle, Share2, UserPlus, Eye } from "lucide-react";
 import { TabBar } from "../ui/TabBar";
 import { MetricCard } from "../ui/MetricCard";
-import { ChartCard } from "../ui/ChartCard";
 import { TopPostEmbedCard } from "../ui/TopPostEmbedCard";
 import { FindingsBanner } from "../ui/FindingsBanner";
 import { PaidMediaSection } from "./PaidMediaSection";
+import { DynamicTimeSeriesChart, MetricOption } from "../ui/DynamicTimeSeriesChart";
 import { DashboardData, BrandConfig, OfficialPeriod } from "../../types";
 import {
   filterByDateRange,
@@ -26,6 +15,7 @@ import {
 } from "../../utils/formatters";
 import { resolveMetricValue, hasSectionManualData } from "../../utils/manualOverrides";
 import { ManualDataLegend } from "../ui/ManualDataLegend";
+import { sortByDateAsc } from "../../utils/chartAggregation";
 
 interface TikTokSectionProps {
   data: DashboardData;
@@ -47,24 +37,12 @@ export const TikTokSection: React.FC<TikTokSectionProps> = ({
   onSubTabChange,
   officialPeriod,
 }) => {
-  const filtered = useMemo(
-    () => filterByDateRange(data.tiktokInsights, dateRange.start, dateRange.end),
-    [data.tiktokInsights, dateRange],
-  );
+  const filtered = useMemo(() => {
+    const f = filterByDateRange(data.tiktokInsights, dateRange.start, dateRange.end);
+    return sortByDateAsc(f);
+  }, [data.tiktokInsights, dateRange]);
 
   const posts = data.topPostsTT;
-
-  const chartData = useMemo(
-    () =>
-      filtered.map((d) => ({
-        date: d.date.slice(5),
-        Vistas: d.videoViews,
-        Likes: d.likes,
-        Comentarios: d.comments,
-        Compartidos: d.shares,
-      })),
-    [filtered],
-  );
 
   const visibleCards = data.visibleMetrics
     .filter((v) => v.section === "tiktok_overview" && v.visible)
@@ -154,6 +132,70 @@ export const TikTokSection: React.FC<TikTokSectionProps> = ({
     newFollowers: UserPlus,
   };
 
+  const rawChartData = useMemo(
+    () =>
+      filtered.map((d) => ({
+        date: d.date,
+        videoViews: d.videoViews,
+        likes: d.likes,
+        comments: d.comments,
+        shares: d.shares,
+        followers: d.followers,
+        newFollowers: d.newFollowers,
+        profileViews: (d as any).profileViews || 0,
+      })),
+    [filtered],
+  );
+
+  const colorMap: Record<string, string> = {
+    followers: TT_ACCENT,
+    videoViews: TT_ACCENT,
+    likes: "#EC4899",
+    comments: TT_COLOR,
+    shares: brand.accentColor,
+    newFollowers: "#10B981",
+    profileViews: "#8B5CF6",
+  };
+
+  const fallbackMetrics: MetricOption[] = [
+    { key: "videoViews", label: "Vistas", color: colorMap["videoViews"] },
+    { key: "likes", label: "Likes", color: colorMap["likes"] },
+    { key: "comments", label: "Comentarios", color: colorMap["comments"] },
+    { key: "shares", label: "Compartidos", color: colorMap["shares"] },
+    { key: "newFollowers", label: "Nuevos Seguidores", color: colorMap["newFollowers"] },
+    { key: "followers", label: "Seguidores", color: colorMap["followers"] },
+  ];
+
+  const availableMetrics: MetricOption[] = (() => {
+    if (visibleCards.length > 0) {
+      return visibleCards.map((m) => ({
+        key: m.metric,
+        label: m.label,
+        color: colorMap[m.metric] || TT_ACCENT,
+      }));
+    }
+    return fallbackMetrics;
+  })();
+
+  const chart1Defaults = (() => {
+    const keys = availableMetrics.map((m) => m.key);
+    const pref = ["videoViews", "likes"];
+    const f = pref.filter((k) => keys.includes(k));
+    if (f.length >= 2) return f.slice(0, 2);
+    if (f.length === 1 && keys.length >= 2) return [f[0], keys.find((k) => k !== f[0])!];
+    return keys.slice(0, 2);
+  })();
+  const chart2Defaults = (() => {
+    const keys = availableMetrics.map((m) => m.key);
+    const pref = ["likes", "comments", "shares", "newFollowers"];
+    const f = pref.filter((k) => keys.includes(k));
+    if (f.length >= 2) return f.slice(0, 2);
+    const remaining = keys.filter((k) => !chart1Defaults.includes(k));
+    if (remaining.length >= 2) return remaining.slice(0, 2);
+    if (remaining.length === 1 && keys.length >= 2) return [remaining[0], keys.find((k) => k !== remaining[0])!];
+    return keys.slice(0, 2);
+  })();
+
   return (
     <div className="space-y-5">
       <TabBar
@@ -194,58 +236,28 @@ export const TikTokSection: React.FC<TikTokSectionProps> = ({
       </div>
 
       <div className="grid grid-cols-1 lg:grid-cols-2 gap-4">
-        <ChartCard title="Vistas de video por día" brand={brand}>
-          <ResponsiveContainer width="100%" height={220}>
-            <AreaChart data={chartData}>
-              <defs>
-                <linearGradient id="ttViews" x1="0" y1="0" x2="0" y2="1">
-                  <stop offset="5%" stopColor={TT_ACCENT} stopOpacity={0.3} />
-                  <stop offset="95%" stopColor={TT_ACCENT} stopOpacity={0} />
-                </linearGradient>
-              </defs>
-              <CartesianGrid strokeDasharray="3 3" stroke={`${brand.textColor}10`} />
-              <XAxis dataKey="date" tick={{ fontSize: 10, fill: `${brand.textColor}77` }} />
-              <YAxis
-                tick={{ fontSize: 10, fill: `${brand.textColor}77` }}
-                tickFormatter={(v) => formatNumber(v)}
-              />
-              <Tooltip
-                contentStyle={{
-                  fontSize: 11,
-                  borderRadius: 8,
-                  border: `1px solid ${TT_ACCENT}33`,
-                }}
-              />
-              <Area
-                type="monotone"
-                dataKey="Vistas"
-                stroke={TT_ACCENT}
-                fill="url(#ttViews)"
-                strokeWidth={2}
-              />
-            </AreaChart>
-          </ResponsiveContainer>
-        </ChartCard>
-
-        <ChartCard title="Interacciones diarias" brand={brand}>
-          <ResponsiveContainer width="100%" height={220}>
-            <BarChart data={chartData}>
-              <CartesianGrid strokeDasharray="3 3" stroke={`${brand.textColor}10`} />
-              <XAxis dataKey="date" tick={{ fontSize: 10, fill: `${brand.textColor}77` }} />
-              <YAxis tick={{ fontSize: 10, fill: `${brand.textColor}77` }} />
-              <Tooltip
-                contentStyle={{
-                  fontSize: 11,
-                  borderRadius: 8,
-                  border: `1px solid ${TT_ACCENT}33`,
-                }}
-              />
-              <Bar dataKey="Likes" fill={TT_ACCENT} radius={[4, 4, 0, 0]} />
-              <Bar dataKey="Comentarios" fill={TT_COLOR} radius={[4, 4, 0, 0]} />
-              <Bar dataKey="Compartidos" fill={brand.accentColor} radius={[4, 4, 0, 0]} />
-            </BarChart>
-          </ResponsiveContainer>
-        </ChartCard>
+        <DynamicTimeSeriesChart
+          brand={brand}
+          title="Gráfico 1 · Vistas de video"
+          subtitle="Selecciona frecuencia y métricas"
+          rawData={rawChartData}
+          availableMetrics={availableMetrics}
+          defaultMetrics={chart1Defaults}
+          chartType="area"
+          idPrefix="tt-1"
+          lastKeys={["followers"]}
+        />
+        <DynamicTimeSeriesChart
+          brand={brand}
+          title="Gráfico 2 · Interacciones"
+          subtitle="Selecciona frecuencia y métricas"
+          rawData={rawChartData}
+          availableMetrics={availableMetrics}
+          defaultMetrics={chart2Defaults}
+          chartType="bar"
+          idPrefix="tt-2"
+          lastKeys={["followers"]}
+        />
       </div>
 
       {posts.length > 0 && (

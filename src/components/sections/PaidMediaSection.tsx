@@ -1,9 +1,5 @@
 import React, { useMemo, useState } from "react";
 import {
-  BarChart, Bar, LineChart, Line, XAxis, YAxis, CartesianGrid,
-  Tooltip, ResponsiveContainer, Legend,
-} from "recharts";
-import {
   DollarSign, MousePointer, Eye, TrendingUp, Target,
   ChevronDown, ChevronUp, Layers, Users, Play, Heart,
 } from "lucide-react";
@@ -14,9 +10,9 @@ import {
 } from "../../types";
 import { MetricCard } from "../ui/MetricCard";
 import { ReachCard } from "../ui/ReachCard";
-import { ChartCard } from "../ui/ChartCard";
 import { SearchBar } from "../ui/SearchBar";
 import { CampaignBreakdownTable } from "../ui/CampaignBreakdownTable";
+import { DynamicTimeSeriesChart, MetricOption } from "../ui/DynamicTimeSeriesChart";
 import {
   formatNumber, formatCurrency, formatPercent,
 } from "../../utils/formatters";
@@ -32,7 +28,7 @@ interface PaidMediaSectionProps {
   groupRules: CampaignGroupRule[];
   globalExclusions: GlobalExclusion[];
   visibleMetrics: VisibleMetric[];
-  platformSection: string; // 'facebook_paid', 'instagram_paid', 'tiktok_paid', 'google_paid'
+  platformSection: string;
   brand: BrandConfig;
   dateRange: { start: string; end: string };
   platformColor: string;
@@ -41,9 +37,7 @@ interface PaidMediaSectionProps {
   campaignMetas: CampaignMeta[];
   deduplicatedReach: DeduplicatedReach[];
   manualMetricOverrides?: ManualMetricOverride[];
-  /** 'facebook' | 'instagram' | 'tiktok' | 'google' */
   platformKey: string;
-  /** Si true, forzar un solo grupo "General" (para TikTok y Google) */
   forceGeneralGroup?: boolean;
 }
 
@@ -83,7 +77,6 @@ export const PaidMediaSection: React.FC<PaidMediaSectionProps> = ({
 
   const grouped = useMemo(() => {
     if (forceGeneralGroup) {
-      // Un solo grupo "General" con todas las campañas
       const totalSpend = searched.reduce((a, r) => a + (r.spend || 0), 0);
       if (totalSpend <= 0) return [];
       return [{
@@ -97,7 +90,6 @@ export const PaidMediaSection: React.FC<PaidMediaSectionProps> = ({
 
   const totals = useMemo(() => calcCampaignTotals(searched), [searched]);
 
-  // Calcular métricas especiales de plataforma
   const totalViews6s = searched.reduce((a, r) => a + ((r as any).views6s || 0), 0);
   const totalThruplays = searched.reduce((a, r) => a + ((r as any).thruplays || 0), 0);
   const totalProfileVisits = searched.reduce((a, r) => a + ((r as any).profileVisits || 0), 0);
@@ -113,7 +105,6 @@ export const PaidMediaSection: React.FC<PaidMediaSectionProps> = ({
     cpr: cpr, avgCpc: totals.cpc,
   };
 
-  // Metas del periodo oficial para overview
   const periodMetas = officialPeriod
     ? campaignMetas.filter((m) => m.periodId === officialPeriod.id)
     : [];
@@ -128,17 +119,35 @@ export const PaidMediaSection: React.FC<PaidMediaSectionProps> = ({
   const totalMetaBudget = metasForPlatform.reduce((a, m) => a + m.budget, 0);
   const totalMetaResult = metasForPlatform.reduce((a, m) => a + m.projectedResult, 0);
 
-  const chartData = useMemo(() => {
-    const byDate: Record<string, { date: string; spend: number; clicks: number; impressions: number; conversions: number }> = {};
+  // ---- Datos diarios para gráficos dinámicos (orden ascendente, corrige "al revés") ----
+  const rawPaidDaily = useMemo(() => {
+    const byDate: Record<string, any> = {};
     searched.forEach((c) => {
-      if (!byDate[c.date]) byDate[c.date] = { date: c.date, spend: 0, clicks: 0, impressions: 0, conversions: 0 };
+      if (!byDate[c.date]) {
+        byDate[c.date] = {
+          date: c.date,
+          spend: 0, cost: 0, clicks: 0, impressions: 0, conversions: 0, reach: 0, leads: 0,
+          videoViews: 0, interactions: 0, views6s: 0, thruplays: 0, profileVisits: 0, thruviews: 0,
+        };
+      }
       byDate[c.date].spend += c.spend || 0;
+      byDate[c.date].cost += c.spend || 0;
       byDate[c.date].clicks += c.clicks || 0;
       byDate[c.date].impressions += c.impressions || 0;
       byDate[c.date].conversions += c.conversions || 0;
+      byDate[c.date].reach += c.reach || 0;
+      byDate[c.date].leads += c.leads || 0;
+      byDate[c.date].videoViews += c.videoViews || 0;
+      byDate[c.date].interactions += c.interactions || 0;
+      byDate[c.date].views6s += (c as any).views6s || 0;
+      byDate[c.date].thruplays += (c as any).thruplays || 0;
+      byDate[c.date].profileVisits += (c as any).profileVisits || 0;
     });
-    return Object.values(byDate).sort((a, b) => a.date.localeCompare(b.date))
-      .map((d) => ({ ...d, date: d.date.slice(5) }));
+    // thruviews composite
+    Object.values(byDate).forEach((r: any) => {
+      r.thruviews = (r.videoViews || 0) + (r.thruplays || 0);
+    });
+    return Object.values(byDate).sort((a: any, b: any) => a.date.localeCompare(b.date));
   }, [searched]);
 
   const toggleGroup = (name: string) => {
@@ -149,10 +158,72 @@ export const PaidMediaSection: React.FC<PaidMediaSectionProps> = ({
     });
   };
 
-  // Cards visibles por plataforma
   const visibleCards = visibleMetrics
     .filter((v) => v.section === platformSection && v.visible)
     .sort((a, b) => a.order - b.order);
+
+  // Métricas disponibles para gráficos (solo sumables, excluye tasas ponderadas)
+  const chartSummableKeys = ["spend","cost","impressions","clicks","conversions","reach","leads","videoViews","interactions","views6s","thruplays","profileVisits","thruviews"];
+  const colorMapPaid: Record<string, string> = {
+    spend: platformColor,
+    cost: platformColor,
+    impressions: "#64748B",
+    clicks: brand.secondaryColor,
+    conversions: "#10B981",
+    reach: "#0EA5E9",
+    leads: "#8B5CF6",
+    videoViews: "#F59E0B",
+    thruviews: "#F59E0B",
+    thruplays: "#F97316",
+    views6s: "#06B6D4",
+    interactions: "#EC4899",
+    profileVisits: "#6366F1",
+  };
+  const fallbackPaidMetrics: MetricOption[] = [
+    { key: "spend", label: "Inversión", color: colorMapPaid["spend"] },
+    { key: "impressions", label: "Impresiones", color: colorMapPaid["impressions"] },
+    { key: "clicks", label: "Clics", color: colorMapPaid["clicks"] },
+    { key: "conversions", label: "Conversiones", color: colorMapPaid["conversions"] },
+    { key: "reach", label: "Alcance", color: colorMapPaid["reach"] },
+    { key: "leads", label: "Leads", color: colorMapPaid["leads"] },
+  ];
+  const availableChartMetrics: MetricOption[] = (() => {
+    if (visibleCards.length > 0) {
+      const filtered = visibleCards
+        .filter((m) => chartSummableKeys.includes(m.metric))
+        .map((m) => ({
+          key: m.metric,
+          label: m.label,
+          color: colorMapPaid[m.metric] || platformColor,
+        }));
+      if (filtered.length >= 2) return filtered;
+      if (filtered.length > 0) {
+        // complementar con fallback
+        const missing = fallbackPaidMetrics.filter((f) => !filtered.some((x) => x.key === f.key));
+        return [...filtered, ...missing].slice(0, Math.max(4, filtered.length + 2));
+      }
+    }
+    return fallbackPaidMetrics;
+  })();
+
+  const chart1Defaults = (() => {
+    const keys = availableChartMetrics.map((m) => m.key);
+    const pref = ["spend","cost","impressions"];
+    const f = pref.filter((k) => keys.includes(k));
+    if (f.length >= 2) return f.slice(0,2);
+    if (f.length === 1 && keys.length >=2) return [f[0], keys.find(k=>k!==f[0])!];
+    return keys.slice(0,2);
+  })();
+  const chart2Defaults = (() => {
+    const keys = availableChartMetrics.map((m) => m.key);
+    const pref = ["clicks","conversions","leads","reach"];
+    const f = pref.filter((k) => keys.includes(k));
+    if (f.length >= 2) return f.slice(0,2);
+    const remaining = keys.filter((k) => !chart1Defaults.includes(k));
+    if (remaining.length >=2) return remaining.slice(0,2);
+    if (remaining.length === 1 && keys.length>=2) return [remaining[0], keys.find(k=>k!==remaining[0])!];
+    return keys.slice(0,2);
+  })();
 
   return (
     <div className="space-y-5">
@@ -162,7 +233,6 @@ export const PaidMediaSection: React.FC<PaidMediaSectionProps> = ({
         <ManualDataLegend brand={brand} />
       )}
 
-      {/* Overview cards */}
       {visibleCards.length > 0 && (
         <div className="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-6 gap-3">
           {visibleCards.map((m) => {
@@ -184,7 +254,6 @@ export const PaidMediaSection: React.FC<PaidMediaSectionProps> = ({
               manualMetricOverrides, officialPeriod, platformSection, m.metric, val,
             );
             const Icon = ALL_ICONS[m.metric] || Target;
-            // Show % vs meta if official period
             let subtitle: string | undefined;
             if (officialPeriod && totalMetaBudget > 0 && m.metric === "spend") {
               subtitle = `Meta: ${formatCurrency(totalMetaBudget)} · ${formatPercent((totals.spend / totalMetaBudget) * 100, 1)}`;
@@ -205,7 +274,6 @@ export const PaidMediaSection: React.FC<PaidMediaSectionProps> = ({
         </div>
       )}
 
-      {/* % cumplimiento overview (solo periodo oficial) */}
       {officialPeriod && metasForPlatform.length > 0 && (
         <div
           className="rounded-xl p-3 border text-xs flex flex-wrap gap-4"
@@ -225,35 +293,30 @@ export const PaidMediaSection: React.FC<PaidMediaSectionProps> = ({
         </div>
       )}
 
-      {/* Charts */}
+      {/* Charts dinámicos */}
       <div className="grid grid-cols-1 lg:grid-cols-2 gap-4">
-        <ChartCard title="Inversión diaria" brand={brand}>
-          <ResponsiveContainer width="100%" height={200}>
-            <BarChart data={chartData}>
-              <CartesianGrid strokeDasharray="3 3" stroke={`${brand.textColor}10`} />
-              <XAxis dataKey="date" tick={{ fontSize: 10, fill: `${brand.textColor}77` }} />
-              <YAxis tick={{ fontSize: 10, fill: `${brand.textColor}77` }} tickFormatter={formatNumber} />
-              <Tooltip contentStyle={{ fontSize: 11, borderRadius: 8, border: `1px solid ${brand.primaryColor}33` }} />
-              <Bar dataKey="spend" name="Inversión" fill={platformColor} radius={[4, 4, 0, 0]} />
-            </BarChart>
-          </ResponsiveContainer>
-        </ChartCard>
-        <ChartCard title="Clics y conversiones" brand={brand}>
-          <ResponsiveContainer width="100%" height={200}>
-            <LineChart data={chartData}>
-              <CartesianGrid strokeDasharray="3 3" stroke={`${brand.textColor}10`} />
-              <XAxis dataKey="date" tick={{ fontSize: 10, fill: `${brand.textColor}77` }} />
-              <YAxis tick={{ fontSize: 10, fill: `${brand.textColor}77` }} tickFormatter={formatNumber} />
-              <Tooltip contentStyle={{ fontSize: 11, borderRadius: 8, border: `1px solid ${brand.primaryColor}33` }} />
-              <Legend wrapperStyle={{ fontSize: 10 }} />
-              <Line type="monotone" dataKey="clicks" name="Clics" stroke={brand.secondaryColor} strokeWidth={2} dot={false} />
-              <Line type="monotone" dataKey="conversions" name="Conv." stroke="#10B981" strokeWidth={2} dot={false} />
-            </LineChart>
-          </ResponsiveContainer>
-        </ChartCard>
+        <DynamicTimeSeriesChart
+          brand={brand}
+          title="Gráfico 1 · Inversión"
+          subtitle="Frecuencia y métricas seleccionables"
+          rawData={rawPaidDaily}
+          availableMetrics={availableChartMetrics}
+          defaultMetrics={chart1Defaults}
+          chartType="bar"
+          idPrefix={`${platformKey}-paid-1`}
+        />
+        <DynamicTimeSeriesChart
+          brand={brand}
+          title="Gráfico 2 · Resultados"
+          subtitle="Frecuencia y métricas seleccionables"
+          rawData={rawPaidDaily}
+          availableMetrics={availableChartMetrics}
+          defaultMetrics={chart2Defaults}
+          chartType="line"
+          idPrefix={`${platformKey}-paid-2`}
+        />
       </div>
 
-      {/* Grupos */}
       <div>
         <div className="flex items-center gap-2 mb-3">
           <Layers size={15} style={{ color: brand.primaryColor }} />
@@ -272,11 +335,7 @@ export const PaidMediaSection: React.FC<PaidMediaSectionProps> = ({
             const name = rule?.name || "Sin grupo";
             const t = calcCampaignTotals(rows);
             const isExpanded = expandedGroups.has(name);
-
-            // % participación inversión
             const pctInv = totals.spend > 0 ? (t.spend / totals.spend) * 100 : 0;
-
-            // Desglose por tipo de indicador
             const byIndicator: Record<string, { label: string; total: number; platformTotal: number }> = {};
             uniqueCampaigns.forEach((cn) => {
               const cr = rows.filter((r) => r.campaignName === cn);
@@ -286,8 +345,6 @@ export const PaidMediaSection: React.FC<PaidMediaSectionProps> = ({
               }
               byIndicator[res.label].total += res.value;
             });
-
-            // Calcular total de plataforma por indicador para % participación
             const allCampaignNames = [...new Set(searched.map((r) => r.campaignName))];
             allCampaignNames.forEach((cn) => {
               const cr = searched.filter((r) => r.campaignName === cn);
@@ -296,16 +353,12 @@ export const PaidMediaSection: React.FC<PaidMediaSectionProps> = ({
                 byIndicator[res.label].platformTotal += res.value;
               }
             });
-
             const indicators = Object.values(byIndicator);
-
-            // Metas del grupo
             const groupMetas = periodMetas.filter((m) =>
               uniqueCampaigns.some(
                 (cn) => cn.toLowerCase().trim() === m.campaignName.toLowerCase().trim(),
               ),
             );
-
             const campaignDetails = uniqueCampaigns.map((n) => {
               const cr = rows.filter((r) => r.campaignName === n);
               return {
@@ -315,7 +368,6 @@ export const PaidMediaSection: React.FC<PaidMediaSectionProps> = ({
                 objective: cr[0]?.objective || "",
               };
             });
-
             return (
               <div
                 key={name}
@@ -352,8 +404,6 @@ export const PaidMediaSection: React.FC<PaidMediaSectionProps> = ({
                       {isExpanded ? <ChevronUp size={16} style={{ color: `${brand.textColor}88` }} /> : <ChevronDown size={16} style={{ color: `${brand.textColor}88` }} />}
                     </div>
                   </div>
-
-                  {/* Indicadores por tipo */}
                   <div className="mt-3 flex flex-wrap gap-3">
                     {indicators.map((ind) => {
                       const pctResult = ind.platformTotal > 0 ? (ind.total / ind.platformTotal) * 100 : 0;
@@ -379,7 +429,6 @@ export const PaidMediaSection: React.FC<PaidMediaSectionProps> = ({
                     })}
                   </div>
                 </div>
-
                 {isExpanded && (
                   <div className="p-4">
                     <CampaignBreakdownTable

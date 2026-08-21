@@ -1,23 +1,12 @@
 import React, { useMemo } from "react";
-import {
-  AreaChart,
-  Area,
-  XAxis,
-  YAxis,
-  CartesianGrid,
-  Tooltip,
-  ResponsiveContainer,
-  BarChart,
-  Bar,
-} from "recharts";
 import { Users, Eye, Heart, TrendingUp, UserPlus } from "lucide-react";
 import { TabBar } from "../ui/TabBar";
 import { MetricCard } from "../ui/MetricCard";
-import { ChartCard } from "../ui/ChartCard";
 import { TopPostEmbedCard } from "../ui/TopPostEmbedCard";
 import { ReachCard } from "../ui/ReachCard";
 import { FindingsBanner } from "../ui/FindingsBanner";
 import { PaidMediaSection } from "./PaidMediaSection";
+import { DynamicTimeSeriesChart, MetricOption } from "../ui/DynamicTimeSeriesChart";
 import { DashboardData, BrandConfig, OfficialPeriod } from "../../types";
 import {
   filterByDateRange,
@@ -28,6 +17,7 @@ import {
 } from "../../utils/formatters";
 import { resolveMetricValue, hasSectionManualData } from "../../utils/manualOverrides";
 import { ManualDataLegend } from "../ui/ManualDataLegend";
+import { sortByDateAsc } from "../../utils/chartAggregation";
 
 interface FacebookSectionProps {
   data: DashboardData;
@@ -48,24 +38,12 @@ export const FacebookSection: React.FC<FacebookSectionProps> = ({
   onSubTabChange,
   officialPeriod,
 }) => {
-  const filtered = useMemo(
-    () => filterByDateRange(data.facebookInsights, dateRange.start, dateRange.end),
-    [data.facebookInsights, dateRange],
-  );
+  const filtered = useMemo(() => {
+    const f = filterByDateRange(data.facebookInsights, dateRange.start, dateRange.end);
+    return sortByDateAsc(f);
+  }, [data.facebookInsights, dateRange]);
 
   const posts = data.topPostsFB;
-
-  const chartData = useMemo(
-    () =>
-      filtered.map((d) => ({
-        date: d.date.slice(5),
-        Alcance: d.reach,
-        Impresiones: d.impressions,
-        Engagement: d.engagement,
-        "Nuevos Seguidores": d.newFollowers,
-      })),
-    [filtered],
-  );
 
   const visibleCards = data.visibleMetrics
     .filter((v) => v.section === "facebook_overview" && v.visible)
@@ -169,6 +147,77 @@ export const FacebookSection: React.FC<FacebookSectionProps> = ({
     newFollowers: UserPlus,
   };
 
+  // ---- Datos para gráficos dinámicos ----
+  const rawChartData = useMemo(
+    () =>
+      filtered.map((d) => ({
+        date: d.date,
+        reach: d.reach,
+        impressions: d.impressions,
+        engagement: d.engagement,
+        interactions: d.engagement,
+        followers: d.followers,
+        pageViews: d.pageViews,
+        newFollowers: d.newFollowers,
+      })),
+    [filtered],
+  );
+
+  const colorMap: Record<string, string> = {
+    followers: FB_COLOR,
+    reach: FB_COLOR,
+    impressions: brand.accentColor,
+    engagement: "#EC4899",
+    interactions: "#EC4899",
+    pageViews: "#8B5CF6",
+    newFollowers: "#10B981",
+  };
+
+  const fallbackMetrics: MetricOption[] = [
+    { key: "reach", label: "Alcance", color: colorMap["reach"] },
+    { key: "impressions", label: "Impresiones", color: colorMap["impressions"] },
+    { key: "engagement", label: "Engagement", color: colorMap["engagement"] },
+    { key: "newFollowers", label: "Nuevos Seguidores", color: colorMap["newFollowers"] },
+    { key: "followers", label: "Seguidores", color: colorMap["followers"] },
+    { key: "pageViews", label: "Vistas de página", color: colorMap["pageViews"] },
+  ];
+
+  const availableMetrics: MetricOption[] = (() => {
+    if (visibleCards.length > 0) {
+      return visibleCards.map((m) => ({
+        key: m.metric,
+        label: m.label,
+        color: colorMap[m.metric] || FB_COLOR,
+      }));
+    }
+    return fallbackMetrics;
+  })();
+
+  // defaults: primer gráfico alcance+impresiones, segundo engagement+nuevos seguidores si existen
+  const chart1Defaults = (() => {
+    const keys = availableMetrics.map((m) => m.key);
+    const preferred = ["reach", "impressions"];
+    const filteredPref = preferred.filter((k) => keys.includes(k));
+    if (filteredPref.length >= 2) return filteredPref.slice(0, 2);
+    if (filteredPref.length === 1 && keys.length >= 2) {
+      const other = keys.find((k) => k !== filteredPref[0]);
+      return [filteredPref[0], other!];
+    }
+    return keys.slice(0, 2);
+  })();
+
+  const chart2Defaults = (() => {
+    const keys = availableMetrics.map((m) => m.key);
+    const preferred = ["engagement", "newFollowers", "interactions", "pageViews"];
+    const filteredPref = preferred.filter((k) => keys.includes(k));
+    if (filteredPref.length >= 2) return filteredPref.slice(0, 2);
+    // fallback: tomar los no usados en chart1
+    const remaining = keys.filter((k) => !chart1Defaults.includes(k));
+    if (remaining.length >= 2) return remaining.slice(0, 2);
+    if (remaining.length === 1 && keys.length >= 2) return [remaining[0], keys.find((k) => k !== remaining[0])!];
+    return keys.slice(0, 2);
+  })();
+
   return (
     <div className="space-y-5">
       <TabBar
@@ -222,74 +271,30 @@ export const FacebookSection: React.FC<FacebookSectionProps> = ({
         })}
       </div>
 
-      {/* Charts */}
+      {/* Charts dinámicos */}
       <div className="grid grid-cols-1 lg:grid-cols-2 gap-4">
-        <ChartCard title="Alcance e Impresiones diarias" brand={brand}>
-          <ResponsiveContainer width="100%" height={220}>
-            <AreaChart data={chartData}>
-              <defs>
-                <linearGradient id="fbReach" x1="0" y1="0" x2="0" y2="1">
-                  <stop offset="5%" stopColor={FB_COLOR} stopOpacity={0.3} />
-                  <stop offset="95%" stopColor={FB_COLOR} stopOpacity={0} />
-                </linearGradient>
-                <linearGradient id="fbImpr" x1="0" y1="0" x2="0" y2="1">
-                  <stop offset="5%" stopColor={brand.accentColor} stopOpacity={0.3} />
-                  <stop offset="95%" stopColor={brand.accentColor} stopOpacity={0} />
-                </linearGradient>
-              </defs>
-              <CartesianGrid strokeDasharray="3 3" stroke={`${brand.textColor}10`} />
-              <XAxis dataKey="date" tick={{ fontSize: 10, fill: `${brand.textColor}77` }} />
-              <YAxis
-                tick={{ fontSize: 10, fill: `${brand.textColor}77` }}
-                tickFormatter={(v) => formatNumber(v)}
-              />
-              <Tooltip
-                contentStyle={{
-                  fontSize: 11,
-                  borderRadius: 8,
-                  border: `1px solid ${FB_COLOR}33`,
-                }}
-              />
-              <Area
-                type="monotone"
-                dataKey="Alcance"
-                stroke={FB_COLOR}
-                fill="url(#fbReach)"
-                strokeWidth={2}
-              />
-              <Area
-                type="monotone"
-                dataKey="Impresiones"
-                stroke={brand.accentColor}
-                fill="url(#fbImpr)"
-                strokeWidth={2}
-              />
-            </AreaChart>
-          </ResponsiveContainer>
-        </ChartCard>
-
-        <ChartCard title="Engagement y Nuevos Seguidores" brand={brand}>
-          <ResponsiveContainer width="100%" height={220}>
-            <BarChart data={chartData}>
-              <CartesianGrid strokeDasharray="3 3" stroke={`${brand.textColor}10`} />
-              <XAxis dataKey="date" tick={{ fontSize: 10, fill: `${brand.textColor}77` }} />
-              <YAxis tick={{ fontSize: 10, fill: `${brand.textColor}77` }} />
-              <Tooltip
-                contentStyle={{
-                  fontSize: 11,
-                  borderRadius: 8,
-                  border: `1px solid ${FB_COLOR}33`,
-                }}
-              />
-              <Bar dataKey="Engagement" fill={FB_COLOR} radius={[4, 4, 0, 0]} />
-              <Bar
-                dataKey="Nuevos Seguidores"
-                fill="#10B981"
-                radius={[4, 4, 0, 0]}
-              />
-            </BarChart>
-          </ResponsiveContainer>
-        </ChartCard>
+        <DynamicTimeSeriesChart
+          brand={brand}
+          title="Gráfico 1 · Alcance e Impresiones"
+          subtitle="Selecciona frecuencia y métricas"
+          rawData={rawChartData}
+          availableMetrics={availableMetrics}
+          defaultMetrics={chart1Defaults}
+          chartType="area"
+          idPrefix="fb-1"
+          lastKeys={["followers"]}
+        />
+        <DynamicTimeSeriesChart
+          brand={brand}
+          title="Gráfico 2 · Engagement y Seguidores"
+          subtitle="Selecciona frecuencia y métricas"
+          rawData={rawChartData}
+          availableMetrics={availableMetrics}
+          defaultMetrics={chart2Defaults}
+          chartType="bar"
+          idPrefix="fb-2"
+          lastKeys={["followers"]}
+        />
       </div>
 
       {/* Top posts */}
