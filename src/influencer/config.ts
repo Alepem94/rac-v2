@@ -1,7 +1,6 @@
 export const INFLUENCER_SHEET_CONFIG = {
-  // Reemplaza con el ID de tu Google Sheet "Influencer Dashboard | Data Source"
-  // Lo encuentras en la URL: docs.google.com/spreadsheets/d/{ID}/edit
-  sheetId: ((import.meta as any).env?.VITE_INFLUENCER_SHEET_ID) || "1InfluencerTemplatePlaceholder",
+  // Hardcodeado para deploy automático en Vercel — Sheet subido por el cliente
+  sheetId: ((import.meta as any).env?.VITE_INFLUENCER_SHEET_ID) || "1M_Y19t1_AqUUgPxNHgj_NvV5LwQDiL9yl7dvnySKgCg",
   apiKey: ((import.meta as any).env?.VITE_SHEETS_API_KEY) || "AIzaSyCcLcjEOgEQLd-FuiAINd7JqL5zzggkmP0",
 };
 
