@@ -822,9 +822,13 @@ export const InfluencerDashboard: React.FC<{ brand: BrandConfig; onBack: () => v
       </main>
 
       <footer className="border-t py-4 px-4 mt-6" style={{borderColor:`${brand.primaryColor}10`}}>
-        <div className="max-w-screen-2xl mx-auto flex justify-between text-xs" style={{color:`${brand.textColor}55`}}>
-          <span>{selectedCampaign.brand_name} • Influencer Dashboard</span>
+        <div className="max-w-screen-2xl mx-auto flex flex-col md:flex-row items-center justify-between gap-2 text-xs" style={{color:`${brand.textColor}55`}}>
+          <span className="flex items-center gap-2">{selectedCampaign.brand_name} • Influencer Dashboard <span style={{color:`${brand.textColor}30`}}>×</span> <span className="flex items-center gap-1"><img src="/republica-logo.svg" alt="República" className="h-3 w-auto" /> República</span></span>
+          <span>Powered by Agencia República</span>
+        </div>
+        <div className="max-w-screen-2xl mx-auto flex justify-between text-[10px] mt-1" style={{color:`${brand.textColor}40`}}>
           <span>{selectedCampaign.start_date} → {selectedCampaign.end_date} • {selectedCampaign.objective}</span>
+          <span className="hidden sm:inline">RAC × República</span>
         </div>
       </footer>
     </div>

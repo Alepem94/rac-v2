@@ -114,8 +114,16 @@ export default function App() {
       <div className="min-h-screen flex items-center justify-center p-6" style={{ backgroundColor: data.brand.bgColor }}>
         <div className="max-w-4xl w-full">
           <div className="text-center mb-8">
-            <div className="w-16 h-16 rounded-2xl mx-auto flex items-center justify-center text-white font-bold text-xl mb-4" style={{ background: `linear-gradient(135deg, ${data.brand.primaryColor}, ${data.brand.secondaryColor})` }}>{data.brand.accountName.charAt(0)}</div>
-            <h1 className="text-2xl font-bold" style={{ color: data.brand.textColor }}>{data.brand.accountName}</h1>
+            <div className="flex items-center justify-center gap-4 mb-4">
+              {data.brand.logoUrl ? (
+                <img src={data.brand.logoUrl} alt={data.brand.accountName} className="h-12 w-auto object-contain rounded-xl bg-white p-1.5 shadow-sm" style={{ border: `1px solid ${data.brand.primaryColor}15` }} onError={(e) => ((e.currentTarget as HTMLImageElement).style.display = "none")} />
+              ) : (
+                <div className="w-12 h-12 rounded-xl flex items-center justify-center text-white font-bold text-lg" style={{ background: `linear-gradient(135deg, ${data.brand.primaryColor}, ${data.brand.secondaryColor})` }}>{data.brand.accountName.charAt(0)}</div>
+              )}
+              <span className="text-xl font-light" style={{ color: `${data.brand.textColor}30` }}>×</span>
+              <img src="/republica-logo.svg" alt="Agencia República" className="h-10 w-auto object-contain" onError={(e) => ((e.currentTarget as HTMLImageElement).style.display = "none")} />
+            </div>
+            <h1 className="text-2xl font-bold" style={{ color: data.brand.textColor }}>{data.brand.accountName} <span className="font-light" style={{ color: `${data.brand.textColor}55` }}>× República</span></h1>
             <p className="text-sm mt-1" style={{ color: `${data.brand.textColor}66` }}>Selecciona el dashboard que quieres consultar</p>
           </div>
           <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
@@ -143,6 +151,11 @@ export default function App() {
             </button>
           </div>
           <div className="text-center mt-6 text-xs" style={{ color: `${data.brand.textColor}55` }}>Puedes cambiar de dashboard en cualquier momento desde el header</div>
+          <div className="text-center mt-8 pt-4 border-t flex items-center justify-center gap-2 text-xs" style={{ borderColor: `${data.brand.primaryColor}10`, color: `${data.brand.textColor}55` }}>
+            <span>Powered by Agencia República</span>
+            <span style={{ color: `${data.brand.textColor}30` }}>•</span>
+            <span className="flex items-center gap-1"><img src="/republica-logo.svg" alt="República" className="h-3 w-auto" /> RAC × República</span>
+          </div>
         </div>
       </div>
     );
@@ -463,11 +476,13 @@ export default function App() {
         style={{ borderColor: `${brand.primaryColor}15` }}
       >
         <div className="max-w-screen-2xl mx-auto flex flex-col md:flex-row items-center justify-between gap-2">
-          <div className="text-xs" style={{ color: `${brand.textColor}66` }}>
-            {brand.accountName} · Marketing Dashboard
+          <div className="text-xs flex items-center gap-2" style={{ color: `${brand.textColor}66` }}>
+            <span>{brand.accountName} · Marketing Dashboard</span>
+            <span style={{ color: `${brand.textColor}30` }}>×</span>
+            <span className="flex items-center gap-1.5"><img src="/republica-logo.svg" alt="República" className="h-3.5 w-auto object-contain" /> República</span>
           </div>
           <div className="text-xs" style={{ color: `${brand.textColor}55` }}>
-            Powered by Google Sheets · React · Recharts
+            Powered by Agencia República
           </div>
         </div>
       </footer>
