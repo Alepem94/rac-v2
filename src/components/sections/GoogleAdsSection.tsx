@@ -104,10 +104,42 @@ export const GoogleAdsSection: React.FC<GoogleAdsSectionProps> = ({
   const ctr = totalImpressions > 0 ? (totalClicks / totalImpressions) * 100 : 0;
   const avgCpc = totalClicks > 0 ? totalCost / totalClicks : 0;
 
-  // Datos diarios para gráficos dinámicos (orden ascendente corrige "al revés")
+  // Datos diarios para gráficos dinámicos (ventana fija, ignoran calendario)
+  const googleAsPaidFull = useMemo((): PaidCampaignRow[] => {
+    return (data.googleAds as any[])
+      .filter((c: any) => !isGloballyExcluded(c.campaignName, c.date, data.globalExclusions, data.periods))
+      .map((r: any) => ({
+        date: r.date,
+        campaignName: r.campaignName,
+        status: "ACTIVE",
+        objective: r.campaignType,
+        spend: r.cost,
+        impressions: r.impressions,
+        reach: 0,
+        frequency: 0,
+        clicks: r.clicks,
+        ctr: r.ctr,
+        cpc: r.avgCpc,
+        cpm: r.cpm,
+        interactions: 0,
+        leads: 0,
+        conversions: r.conversions,
+        costPerConversion: r.costPerConversion,
+        videoViews: r.videoViews,
+        platform: "Google" as const,
+        rawPlatform: "Google_Ads",
+      }));
+  }, [data.googleAds, data.globalExclusions, data.periods]);
+
+  const chartSearchedFull = useMemo(() => {
+    if (!searchTerm.trim()) return googleAsPaidFull;
+    const q = searchTerm.toLowerCase();
+    return googleAsPaidFull.filter((c) => c.campaignName.toLowerCase().includes(q));
+  }, [googleAsPaidFull, searchTerm]);
+
   const rawGoogleDaily = useMemo(() => {
     const byDate: Record<string, any> = {};
-    searched.forEach((c) => {
+    chartSearchedFull.forEach((c) => {
       if (!byDate[c.date]) {
         byDate[c.date] = { date: c.date, cost: 0, impressions: 0, clicks: 0, conversions: 0, thruviews: 0, videoViews: 0 };
       }
@@ -119,7 +151,7 @@ export const GoogleAdsSection: React.FC<GoogleAdsSectionProps> = ({
       byDate[c.date].thruviews += c.videoViews || 0;
     });
     return Object.values(byDate).sort((a: any, b: any) => a.date.localeCompare(b.date));
-  }, [searched]);
+  }, [chartSearchedFull]);
 
   const visibleCards = data.visibleMetrics
     .filter((v) => v.section === "google_paid" && v.visible)

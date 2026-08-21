@@ -17,7 +17,7 @@ import {
   formatNumber, formatCurrency, formatPercent,
 } from "../../utils/formatters";
 import {
-  cleanCampaigns, groupCampaigns, calcCampaignTotals,
+  cleanCampaigns, groupCampaigns, calcCampaignTotals, isGloballyExcluded,
 } from "../../utils/grouping";
 import { inferCampaignResult } from "../../utils/resultInference";
 import { resolveMetricValue, hasSectionManualData } from "../../utils/manualOverrides";
@@ -119,10 +119,19 @@ export const PaidMediaSection: React.FC<PaidMediaSectionProps> = ({
   const totalMetaBudget = metasForPlatform.reduce((a, m) => a + m.budget, 0);
   const totalMetaResult = metasForPlatform.reduce((a, m) => a + m.projectedResult, 0);
 
-  // ---- Datos diarios para gráficos dinámicos (orden ascendente, corrige "al revés") ----
+  // ---- Datos diarios para gráficos dinámicos (ventana fija, ignoran calendario) ----
+  const chartBaseFiltered = useMemo(() => {
+    let base = campaigns.filter((c) => !isGloballyExcluded(c.campaignName, c.date, globalExclusions, periods));
+    if (searchTerm.trim()) {
+      const q = searchTerm.toLowerCase();
+      base = base.filter((c) => c.campaignName.toLowerCase().includes(q));
+    }
+    return base;
+  }, [campaigns, globalExclusions, periods, searchTerm]);
+
   const rawPaidDaily = useMemo(() => {
     const byDate: Record<string, any> = {};
-    searched.forEach((c) => {
+    chartBaseFiltered.forEach((c) => {
       if (!byDate[c.date]) {
         byDate[c.date] = {
           date: c.date,
@@ -148,7 +157,7 @@ export const PaidMediaSection: React.FC<PaidMediaSectionProps> = ({
       r.thruviews = (r.videoViews || 0) + (r.thruplays || 0);
     });
     return Object.values(byDate).sort((a: any, b: any) => a.date.localeCompare(b.date));
-  }, [searched]);
+  }, [chartBaseFiltered]);
 
   const toggleGroup = (name: string) => {
     setExpandedGroups((prev) => {

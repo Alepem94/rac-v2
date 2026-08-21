@@ -147,10 +147,10 @@ export const FacebookSection: React.FC<FacebookSectionProps> = ({
     newFollowers: UserPlus,
   };
 
-  // ---- Datos para gráficos dinámicos ----
+  // ---- Datos para gráficos dinámicos (ventana fija, ignoran calendario) ----
   const rawChartData = useMemo(
     () =>
-      filtered.map((d) => ({
+      sortByDateAsc(data.facebookInsights).map((d) => ({
         date: d.date,
         reach: d.reach,
         impressions: d.impressions,
@@ -160,7 +160,7 @@ export const FacebookSection: React.FC<FacebookSectionProps> = ({
         pageViews: d.pageViews,
         newFollowers: d.newFollowers,
       })),
-    [filtered],
+    [data.facebookInsights],
   );
 
   const colorMap: Record<string, string> = {

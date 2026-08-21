@@ -17,6 +17,7 @@ import { ChevronDown, ChevronUp, Calendar, BarChart3 } from "lucide-react";
 import { BrandConfig } from "../../types";
 import { Frequency, FREQUENCY_LABELS, aggregateChartData } from "../../utils/chartAggregation";
 import { formatNumber } from "../../utils/formatters";
+import { addDays, addMonths, addYears, format } from "date-fns";
 
 export interface MetricOption {
   key: string;
@@ -37,7 +38,14 @@ interface DynamicTimeSeriesChartProps {
   sumKeys?: string[];
   lastKeys?: string[];
   idPrefix: string;
+  /** Si true (default), ignora el filtro de calendario y muestra ventana fija según frecuencia */
+  fixedWindow?: boolean;
 }
+
+const parseLocalDate = (s: string): Date => {
+  const [y, m, d] = s.split("-").map(Number);
+  return new Date(y, (m || 1) - 1, d || 1);
+};
 
 export const DynamicTimeSeriesChart: React.FC<DynamicTimeSeriesChartProps> = ({
   brand,
@@ -52,6 +60,7 @@ export const DynamicTimeSeriesChart: React.FC<DynamicTimeSeriesChartProps> = ({
   sumKeys,
   lastKeys,
   idPrefix,
+  fixedWindow = true,
 }) => {
   const [frequency, setFrequency] = useState<Frequency>(defaultFrequency);
   const [freqOpen, setFreqOpen] = useState(false);
@@ -83,18 +92,59 @@ export const DynamicTimeSeriesChart: React.FC<DynamicTimeSeriesChartProps> = ({
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [validOptions]);
 
-  const chartData = useMemo(() => {
+  // Ventana fija: diaria 15d, semanal 4sem, mensual 12m, anual 5a
+  const windowFilteredData = useMemo(() => {
     if (!rawData.length) return [];
-    // Determinar keys a agregar: si sumKeys provistos, usarlos; si no, usar todos los available
+    if (!fixedWindow) return rawData;
+    const maxDateStr = rawData.reduce((max, r) => (r.date > max ? r.date : max), rawData[0].date);
+    const maxDate = parseLocalDate(maxDateStr);
+    let startDate: Date;
+    switch (frequency) {
+      case "diaria":
+        startDate = addDays(maxDate, -14);
+        break;
+      case "semanal":
+        startDate = addDays(maxDate, -27); // 4 semanas
+        break;
+      case "mensual": {
+        const d = addMonths(maxDate, -11);
+        startDate = new Date(d.getFullYear(), d.getMonth(), 1);
+        break;
+      }
+      case "anual": {
+        const d = addYears(maxDate, -4); // últimos 5 años
+        startDate = new Date(d.getFullYear(), 0, 1);
+        break;
+      }
+      default:
+        startDate = addDays(maxDate, -14);
+    }
+    const startStr = format(startDate, "yyyy-MM-dd");
+    return rawData.filter((r) => r.date >= startStr && r.date <= maxDateStr);
+  }, [rawData, frequency, fixedWindow]);
+
+  const chartData = useMemo(() => {
+    const src = windowFilteredData;
+    if (!src.length) return [];
     const allKeys = validOptions.map((o) => o.key);
     const sKeys = sumKeys || allKeys.filter((k) => !(lastKeys || []).includes(k));
     const lKeys = lastKeys || [];
-    // Asegurar que rawData esté ordenado y tenga todos los keys
-    return aggregateChartData(rawData, frequency, {
+    return aggregateChartData(src, frequency, {
       sumKeys: sKeys,
       lastKeys: lKeys,
     });
-  }, [rawData, frequency, validOptions, sumKeys, lastKeys]);
+  }, [windowFilteredData, frequency, validOptions, sumKeys, lastKeys]);
+
+  const windowLabel = useMemo(() => {
+    if (!fixedWindow) return "";
+    switch (frequency) {
+      case "diaria": return "Últimos 15 días";
+      case "semanal": return "Últimas 4 semanas";
+      case "mensual": return "Últimos 12 meses";
+      case "anual": return "Últimos 5 años";
+      default: return "";
+    }
+  }, [frequency, fixedWindow]);
 
   const toggleMetric = (key: string) => {
     setSelectedMetrics((prev) => {
@@ -139,12 +189,17 @@ export const DynamicTimeSeriesChart: React.FC<DynamicTimeSeriesChartProps> = ({
           </h3>
           {subtitle && (
             <p className="text-xs mt-0.5" style={{ color: `${brand.textColor}66` }}>
-              {subtitle} • {FREQUENCY_LABELS[frequency]}
+              {subtitle} • {FREQUENCY_LABELS[frequency]} {fixedWindow && `• ${windowLabel}`}
             </p>
           )}
           {!subtitle && (
             <p className="text-xs mt-0.5" style={{ color: `${brand.textColor}66` }}>
-              Frecuencia: {FREQUENCY_LABELS[frequency]} • {selectedMetrics.length} métrica(s)
+              Frecuencia: {FREQUENCY_LABELS[frequency]} {fixedWindow && `• ${windowLabel}`} • {selectedMetrics.length} métrica(s)
+            </p>
+          )}
+          {fixedWindow && (
+            <p className="text-[11px] mt-0.5" style={{ color: `${brand.textColor}55` }}>
+              Ventana fija independiente del calendario
             </p>
           )}
         </div>
@@ -390,7 +445,7 @@ export const DynamicTimeSeriesChart: React.FC<DynamicTimeSeriesChartProps> = ({
 
       {chartData.length === 0 && (
         <div className="text-center text-xs py-6" style={{ color: `${brand.textColor}66` }}>
-          No hay datos en el rango seleccionado
+          {fixedWindow ? `No hay datos en ${windowLabel.toLowerCase()}` : "No hay datos en el rango seleccionado"}
         </div>
       )}
     </div>

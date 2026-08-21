@@ -134,7 +134,7 @@ export const TikTokSection: React.FC<TikTokSectionProps> = ({
 
   const rawChartData = useMemo(
     () =>
-      filtered.map((d) => ({
+      sortByDateAsc(data.tiktokInsights).map((d) => ({
         date: d.date,
         videoViews: d.videoViews,
         likes: d.likes,
@@ -144,7 +144,7 @@ export const TikTokSection: React.FC<TikTokSectionProps> = ({
         newFollowers: d.newFollowers,
         profileViews: (d as any).profileViews || 0,
       })),
-    [filtered],
+    [data.tiktokInsights],
   );
 
   const colorMap: Record<string, string> = {

@@ -51,10 +51,10 @@ export const GoogleAnalyticsSection: React.FC<GoogleAnalyticsSectionProps> = ({
       ? filtered.reduce((a, r) => a + r.avgSessionDuration, 0) / filtered.length
       : 0;
 
-  // Datos diarios para gráficos dinámicos (corrige "al revés" con sort)
+  // Datos diarios para gráficos dinámicos (ventana fija, ignoran calendario)
   const rawAnalyticsDaily = useMemo(
     () =>
-      filtered.map((r) => ({
+      sortByDateAsc(data.googleAnalytics).map((r) => ({
         date: r.date,
         sessions: r.sessions,
         users: r.users,
@@ -64,7 +64,7 @@ export const GoogleAnalyticsSection: React.FC<GoogleAnalyticsSectionProps> = ({
         avgSessionDuration: r.avgSessionDuration,
         conversions: r.conversions,
       })),
-    [filtered],
+    [data.googleAnalytics],
   );
 
   const channelData = useMemo(() => {

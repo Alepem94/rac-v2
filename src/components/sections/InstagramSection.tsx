@@ -149,7 +149,7 @@ export const InstagramSection: React.FC<InstagramSectionProps> = ({
 
   const rawChartData = useMemo(
     () =>
-      filtered.map((d) => ({
+      sortByDateAsc(data.instagramInsights).map((d) => ({
         date: d.date,
         reach: d.reach,
         impressions: d.impressions,
@@ -159,7 +159,7 @@ export const InstagramSection: React.FC<InstagramSectionProps> = ({
         profileVisits: d.profileVisits,
         newFollowers: d.newFollowers,
       })),
-    [filtered],
+    [data.instagramInsights],
   );
 
   const colorMap: Record<string, string> = {
