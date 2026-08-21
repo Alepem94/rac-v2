@@ -1,0 +1,11 @@
+key,value,description
+platforms,"Instagram,TikTok,Facebook,YouTube",Lista de plataformas permitidas
+content_types,"Video,Story,Image,Other",Tipos de contenido
+formats,"Reel,TikTok,Instagram Story,TikTok Story,Facebook Reel,Post,Other",Formatos
+sentiments,"Positive,Neutral,Negative",Sentimientos
+insight_types,"Achievement,Learning,Opportunity,Observation,Recommendation",Tipos de insight
+priorities,"High,Medium,Low",Prioridades
+scopes,"Campaign,Platform,Influencer,Content",Scopes
+campaign_status,"Planning,Active,Completed,Archived",Estados de campaña
+paid_media_type,"None,Whitelisting,Partnership Ad,Boosted Post,Other",Tipos de paid media
+content_status,"Published,Pending,Draft",Estados de contenido

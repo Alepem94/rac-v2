@@ -1,0 +1,4 @@
+campaign_id,content_id,influencer_id,platform,views,reach,impressions,likes,comments,shares,saves,interactions,clicks,link_clicks,video_views,video_views_3s,video_views_6s,average_watch_time,video_completion_rate,story_reach,story_impressions,story_exits,story_replies,story_link_clicks,followers_gained,mentions,profile_visits
+CAMP-001,CONT-001,INF-001,Instagram,420000,380000,520000,18500,1200,890,2100,22690,3400,1200,420000,310000,250000,12.5,42,0,0,0,0,0,1200,45,3200
+CAMP-001,CONT-002,INF-001,TikTok,720000,650000,780000,28000,2100,3200,850,34150,2100,800,720000,540000,410000,9.2,38,0,0,0,0,0,2100,72,5400
+CAMP-001,CONT-003,INF-001,Instagram,0,85000,110000,0,0,0,0,420,0,0,0,0,0,0,0,85000,110000,1200,340,420,0,0,0

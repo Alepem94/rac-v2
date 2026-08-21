@@ -1,0 +1,4 @@
+campaign_id,content_id,influencer_id,platform,format,content_type,publication_date,content_title,content_description,content_url,embed_url,thumbnail_url,video_embed,is_collaboration,is_paid,paid_media_type,content_status,notes
+CAMP-001,CONT-001,INF-001,Instagram,Reel,Video,2026-06-05,Tour por mi nueva RAC,"Jaz muestra su experiencia en la nueva plaza.",https://instagram.com/p/ABC,,https://images.unsplash.com/photo-1522202176988-66273c2fd55f?w=600,,TRUE,TRUE,Whitelisting,Published,
+CAMP-001,CONT-002,INF-001,TikTok,TikTok,Video,2026-06-07,Haul RAC,Haul de productos RAC,https://tiktok.com/@jaz/video/123,,https://images.unsplash.com/photo-1517245386807-bb43f82c33c4?w=600,,TRUE,FALSE,None,Published,
+CAMP-001,CONT-003,INF-001,Instagram,Instagram Story,Story,2026-06-06,Stories tour,Stories swipe up,https://instagram.com/stories/jaz/1,,https://images.unsplash.com/photo-1498049794561-7780e7231661?w=600,,TRUE,FALSE,None,Published,

@@ -9,6 +9,8 @@ import {
   Wifi,
   WifiOff,
   Sparkles,
+  LayoutGrid,
+  Users,
 } from "lucide-react";
 import { TabBar } from "./components/ui/TabBar";
 import { PeriodSelector } from "./components/ui/PeriodSelector";
@@ -20,6 +22,7 @@ import { GoogleAnalyticsSection } from "./components/sections/GoogleAnalyticsSec
 import { useGoogleSheets } from "./hooks/useGoogleSheets";
 import { detectOfficialPeriod } from "./utils/grouping";
 import { ErrorBoundary } from "./components/ui/ErrorBoundary";
+import { InfluencerDashboard } from "./influencer/InfluencerDashboard";
 
 const TikTokIcon = () => (
   <svg width="15" height="15" viewBox="0 0 24 24" fill="currentColor">
@@ -66,6 +69,14 @@ const getDefaultDateRange = () => {
 };
 
 export default function App() {
+  const [dashboardMode, setDashboardMode] = useState<"selector" | "mensual" | "influencer">(() => {
+    try {
+      const saved = localStorage.getItem("rac-dashboard-mode");
+      if (saved === "mensual" || saved === "influencer") return saved;
+    } catch {}
+    return "selector";
+  });
+
   const {
     data,
     loading,
@@ -73,6 +84,16 @@ export default function App() {
     connected,
     fetchSheetData,
   } = useGoogleSheets();
+
+  const handleSelectMode = (mode: "mensual" | "influencer") => {
+    setDashboardMode(mode);
+    try { localStorage.setItem("rac-dashboard-mode", mode); } catch {}
+  };
+
+  const handleBackToSelector = () => {
+    setDashboardMode("selector");
+    try { localStorage.removeItem("rac-dashboard-mode"); } catch {}
+  };
 
   const [activeTab, setActiveTab] = useState("facebook");
   const [fbSubTab, setFbSubTab] = useState("overview");
@@ -87,6 +108,49 @@ export default function App() {
     () => detectOfficialPeriod(dateRange, data.periods),
     [dateRange, data.periods],
   );
+
+  if (dashboardMode === "selector") {
+    return (
+      <div className="min-h-screen flex items-center justify-center p-6" style={{ backgroundColor: data.brand.bgColor }}>
+        <div className="max-w-4xl w-full">
+          <div className="text-center mb-8">
+            <div className="w-16 h-16 rounded-2xl mx-auto flex items-center justify-center text-white font-bold text-xl mb-4" style={{ background: `linear-gradient(135deg, ${data.brand.primaryColor}, ${data.brand.secondaryColor})` }}>{data.brand.accountName.charAt(0)}</div>
+            <h1 className="text-2xl font-bold" style={{ color: data.brand.textColor }}>{data.brand.accountName}</h1>
+            <p className="text-sm mt-1" style={{ color: `${data.brand.textColor}66` }}>Selecciona el dashboard que quieres consultar</p>
+          </div>
+          <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+            <button onClick={() => handleSelectMode("mensual")} className="group text-left rounded-2xl p-6 border-2 hover:shadow-xl transition-all hover:-translate-y-1" style={{ backgroundColor: data.brand.cardBg, borderColor: `${data.brand.primaryColor}20` }}>
+              <div className="w-12 h-12 rounded-xl flex items-center justify-center mb-4" style={{ backgroundColor: `${data.brand.primaryColor}15`, color: data.brand.primaryColor }}><BarChart2 size={24} /></div>
+              <h3 className="font-bold text-base" style={{ color: data.brand.textColor }}>Dashboard Mensual</h3>
+              <p className="text-xs mt-1.5 leading-relaxed" style={{ color: `${data.brand.textColor}77` }}>Métricas orgánicas y paid media por plataforma. Facebook, Instagram, TikTok, Google Ads y Analytics con periodos oficiales.</p>
+              <div className="mt-4 flex items-center gap-1.5 text-xs font-semibold" style={{ color: data.brand.primaryColor }}>Entrar <span className="group-hover:translate-x-1 transition-transform">→</span></div>
+              <div className="mt-3 flex gap-1.5 flex-wrap">
+                <span className="text-[10px] px-2 py-0.5 rounded-full" style={{ backgroundColor: `${data.brand.primaryColor}10`, color: data.brand.primaryColor }}>Facebook</span>
+                <span className="text-[10px] px-2 py-0.5 rounded-full" style={{ backgroundColor: `${data.brand.primaryColor}10`, color: data.brand.primaryColor }}>Instagram</span>
+                <span className="text-[10px] px-2 py-0.5 rounded-full" style={{ backgroundColor: `${data.brand.primaryColor}10`, color: data.brand.primaryColor }}>Google</span>
+              </div>
+            </button>
+            <button onClick={() => handleSelectMode("influencer")} className="group text-left rounded-2xl p-6 border-2 hover:shadow-xl transition-all hover:-translate-y-1" style={{ backgroundColor: data.brand.cardBg, borderColor: `${data.brand.accentColor}40` }}>
+              <div className="w-12 h-12 rounded-xl flex items-center justify-center mb-4" style={{ backgroundColor: `${data.brand.accentColor}30`, color: data.brand.secondaryColor }}><Users size={24} /></div>
+              <h3 className="font-bold text-base" style={{ color: data.brand.textColor }}>Dashboard Influencers</h3>
+              <p className="text-xs mt-1.5 leading-relaxed" style={{ color: `${data.brand.textColor}77` }}>Campañas por influencer, plataforma y contenido. Sentimiento, comentarios, insights y proyecciones por campaña.</p>
+              <div className="mt-4 flex items-center gap-1.5 text-xs font-semibold" style={{ color: data.brand.secondaryColor }}>Entrar <span className="group-hover:translate-x-1 transition-transform">→</span></div>
+              <div className="mt-3 flex gap-1.5 flex-wrap">
+                <span className="text-[10px] px-2 py-0.5 rounded-full" style={{ backgroundColor: `${data.brand.accentColor}30`, color: data.brand.secondaryColor }}>Campañas</span>
+                <span className="text-[10px] px-2 py-0.5 rounded-full" style={{ backgroundColor: `${data.brand.accentColor}30`, color: data.brand.secondaryColor }}>Influencers</span>
+                <span className="text-[10px] px-2 py-0.5 rounded-full" style={{ backgroundColor: `${data.brand.accentColor}30`, color: data.brand.secondaryColor }}>Contenidos</span>
+              </div>
+            </button>
+          </div>
+          <div className="text-center mt-6 text-xs" style={{ color: `${data.brand.textColor}55` }}>Puedes cambiar de dashboard en cualquier momento desde el header</div>
+        </div>
+      </div>
+    );
+  }
+
+  if (dashboardMode === "influencer") {
+    return <InfluencerDashboard brand={data.brand} onBack={handleBackToSelector} />;
+  }
 
   const renderContent = () => {
     const commonProps = { data, brand, dateRange, officialPeriod };
@@ -184,6 +248,14 @@ export default function App() {
 
             {/* Right Controls */}
             <div className="flex items-center gap-2">
+              <button
+                onClick={handleBackToSelector}
+                className="hidden md:flex items-center gap-1.5 px-2.5 py-1.5 rounded-xl border text-xs font-medium hover:opacity-80"
+                style={{ borderColor: `${brand.primaryColor}22`, backgroundColor: brand.cardBg, color: brand.textColor }}
+                title="Cambiar dashboard"
+              >
+                <LayoutGrid size={12} /> Cambiar
+              </button>
               <div
                 className="hidden md:flex items-center gap-2 px-3 py-1.5 rounded-xl border"
                 style={{

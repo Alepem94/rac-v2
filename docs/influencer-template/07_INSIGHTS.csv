@@ -1,0 +1,5 @@
+insight_id,campaign_id,scope,scope_id,insight_type,title,description,priority,display_order,is_featured
+INS-001,CAMP-001,Campaign,CAMP-001,Achievement,Superamos proyección de views en 18%,"Proyectado 3.2M vs Actual 3.78M (+18%) gracias a TikTok.",High,1,TRUE
+INS-002,CAMP-001,Campaign,CAMP-001,Learning,Stories generan cercanía pero bajo alcance,"Stories con 85K alcance vs Reels 400K promedio. Útiles para interacción 1:1.",Medium,2,TRUE
+INS-003,CAMP-001,Campaign,CAMP-001,Opportunity,Oportunidad en Facebook para 30+,"Sofia Ruiz en Facebook alcanzó 78K con costo bajo. Escalar para +35.",High,3,TRUE
+INS-004,CAMP-001,Platform,TikTok,Observation,TikTok lidera en views,"TikTok aportó 58% de views con 4 contenidos.",High,1,FALSE

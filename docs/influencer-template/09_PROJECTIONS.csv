@@ -1,0 +1,4 @@
+campaign_id,influencer_id,projected_views,projected_reach,projected_interactions,projected_clicks,projected_er,projection_notes
+CAMP-001,INF-001,1000000,850000,45000,5000,4.5,
+CAMP-001,INF-002,400000,340000,18000,2500,4.5,
+CAMP-001,INF-003,500000,420000,22000,3000,4.4,

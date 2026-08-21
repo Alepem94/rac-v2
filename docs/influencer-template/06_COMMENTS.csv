@@ -1,0 +1,4 @@
+comment_id,campaign_id,content_id,influencer_id,platform,comment_author,comment_text,comment_date,sentiment,theme,is_highlighted,highlight_reason,screenshot_url,screenshot_embed,comment_url
+COM-001,CAMP-001,CONT-001,INF-001,Instagram,@ana_home,"¡Me encanta! Justo lo que necesitaba para mi sala, ¿dónde la compraste?",2026-06-06,Positive,Intención de compra,TRUE,Intención clara,,,https://instagram.com/p/ABC
+COM-002,CAMP-001,CONT-004,INF-002,TikTok,@carlos_review,"Se ve resistente, ¿cuánto tiempo de garantía tiene?",2026-06-11,Neutral,Pregunta producto,TRUE,Oportunidad de respuesta,,,
+COM-003,CAMP-001,CONT-006,INF-003,Instagram,@sofia_decor,"El envío tardó pero vale totalmente la pena, calidad increíble.",2026-06-16,Positive,Logística,TRUE,Prueba social,,,

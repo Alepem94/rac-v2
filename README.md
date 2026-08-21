@@ -1,6 +1,11 @@
 # RAC · Marketing Dashboard
 
-Dashboard de marketing digital para RAC, alimentado desde Google Sheets. Muestra datos de Facebook, Instagram, TikTok, Google Ads y Google Analytics con filtrado por fechas, periodos oficiales de corte, agrupación automática de campañas, y embeds oficiales de posts.
+Dashboard de marketing digital para RAC, alimentado desde Google Sheets. Incluye **dos dashboards** seleccionables desde la landing inicial:
+
+- **Dashboard Mensual** (existente): Facebook, Instagram, TikTok, Google Ads y Analytics con filtrado por fechas, periodos oficiales, agrupación automática de campañas, y gráficas dinámicas por frecuencia (diaria/semanal/mensual/anual) con ventana fija.
+- **Dashboard Influencers** (nuevo): reporting por campañas de influencer marketing con jerarquía `Campaña → Plataforma → Influencer → Contenido`, sentimiento, comentarios destacados, insights y proyecciones. Se alimenta desde un Google Sheets maestro normalizado (11 pestañas) y permite agregar infinitas campañas con nuevas filas sin modificar código.
+
+Al abrir la app verás un selector con `Dashboard Mensual` y `Dashboard Influencers` (guardado en `localStorage`).
 
 ---
 
@@ -175,6 +180,16 @@ Colores RAC por defecto (editables en la hoja `Configuración`):
 - Es porque se acumulan los valores diarios. Captura el alcance deduplicado en la hoja `Alcance_Deduplicado` y filtra por un periodo oficial para ver el valor correcto.
 
 ---
+
+## 🤳 Dashboard Influencers (nuevo)
+
+Ver `docs/INFLUENCER_README.md`, `docs/INFLUENCER_SETUP.md`, `docs/INFLUENCER_GUIDE.md` y `docs/INFLUENCER_DATA_DICTIONARY.md`.
+
+Plantilla Google Sheets: `docs/influencer-template/*.csv` (11 pestañas: 00_README a 10_CONFIG). Importa los CSV a un nuevo Google Sheet y configura `VITE_INFLUENCER_SHEET_ID` en `.env` o en Vercel.
+
+Si no configuras el Sheet, el dashboard usa datos demo (`src/influencer/data/mocks.ts` con 2 campañas).
+
+Navegación: `Resumen` (sin scroll en 1440x900), `Plataformas`, `Influencers` (con detalle y CPV/CPE/CPC), `Contenidos` (galería/tabla), `Sentimiento` (por campaña/influencer/contenido + comentarios destacados), `Insights` (Logros/Aprendizajes/Oportunidades).
 
 ## 📄 Licencia
 
