@@ -1,5 +1,7 @@
-<svg width="140" height="40" viewBox="0 0 140 40" xmlns="http://www.w3.org/2000/svg">
-  <rect width="140" height="40" rx="6" fill="#1B365D"/>
-  <text x="70" y="24" text-anchor="middle" font-family="Inter, sans-serif" font-size="13" font-weight="800" fill="#fff" letter-spacing="1.5">REPÚBLICA</text>
-  <text x="70" y="32" text-anchor="middle" font-family="Inter, sans-serif" font-size="7" font-weight="600" fill="#FFD100" letter-spacing="2">AGENCIA</text>
+<svg width="160" height="36" viewBox="0 0 160 36" xmlns="http://www.w3.org/2000/svg">
+  <!-- República en negro, tipografía similar al original -->
+  <text x="0" y="26" font-family="Inter, Helvetica, Arial, sans-serif" font-size="32" font-weight="800" fill="#000" letter-spacing="-1.5">República</text>
+  <text x="152" y="10" font-family="Inter, sans-serif" font-size="7" font-weight="400" fill="#000">®</text>
+  <!-- Estrella -->
+  <polygon points="145,14 147.5,21 155,21 149,25.5 151,32 145,27.5 139,32 141,25.5 135,21 142.5,21" fill="#000"/>
 </svg>

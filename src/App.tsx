@@ -1,4 +1,4 @@
-import { useState, useMemo } from "react";
+import { useState, useMemo, useEffect } from "react";
 import {
   BarChart2,
   LineChart,
@@ -94,6 +94,18 @@ export default function App() {
     setDashboardMode("selector");
     try { localStorage.removeItem("rac-dashboard-mode"); } catch {}
   };
+
+  useEffect(() => {
+    const params = new URLSearchParams(window.location.search);
+    if (params.has("selector") || params.has("reset")) {
+      setDashboardMode("selector");
+      try { localStorage.removeItem("rac-dashboard-mode"); } catch {}
+      const url = new URL(window.location.href);
+      url.searchParams.delete("selector");
+      url.searchParams.delete("reset");
+      window.history.replaceState({}, "", url.toString());
+    }
+  }, []);
 
   const [activeTab, setActiveTab] = useState("facebook");
   const [fbSubTab, setFbSubTab] = useState("overview");
@@ -232,7 +244,9 @@ export default function App() {
                   {brand.accountName.charAt(0)}
                 </div>
               )}
-              <div className="min-w-0">
+              <span className="hidden sm:inline text-sm font-light" style={{ color: `${brand.textColor}30` }}>×</span>
+              <img src="/republica-logo.svg" alt="República" className="hidden sm:block h-7 w-auto object-contain" onError={(e) => ((e.currentTarget as HTMLImageElement).style.display = "none")} />
+              <div className="min-w-0 hidden sm:block">
                 <div
                   className="font-bold text-base truncate"
                   style={{ color: brand.textColor }}
@@ -246,6 +260,10 @@ export default function App() {
                   <BarChart2 size={11} />
                   Marketing Dashboard
                 </div>
+              </div>
+              <div className="min-w-0 sm:hidden">
+                <div className="font-bold text-sm truncate" style={{ color: brand.textColor }}>{brand.accountName}</div>
+                <div className="text-[10px]" style={{ color: `${brand.textColor}66` }}>× República</div>
               </div>
             </div>
 
@@ -263,11 +281,11 @@ export default function App() {
             <div className="flex items-center gap-2">
               <button
                 onClick={handleBackToSelector}
-                className="hidden md:flex items-center gap-1.5 px-2.5 py-1.5 rounded-xl border text-xs font-medium hover:opacity-80"
-                style={{ borderColor: `${brand.primaryColor}22`, backgroundColor: brand.cardBg, color: brand.textColor }}
-                title="Cambiar dashboard"
+                className="flex items-center gap-1.5 px-2.5 py-1.5 rounded-xl border text-xs font-medium hover:opacity-80 shrink-0"
+                style={{ borderColor: `${brand.primaryColor}30`, backgroundColor: `${brand.primaryColor}08`, color: brand.primaryColor }}
+                title="Volver al selector inicial"
               >
-                <LayoutGrid size={12} /> Cambiar
+                <LayoutGrid size={12} /> <span className="hidden sm:inline">Inicio</span><span className="sm:hidden">Cambiar</span>
               </button>
               <div
                 className="hidden md:flex items-center gap-2 px-3 py-1.5 rounded-xl border"
@@ -377,7 +395,7 @@ export default function App() {
           </div>
 
           {showMobileMenu && (
-            <div className="lg:hidden mt-3">
+            <div className="lg:hidden mt-3 space-y-2">
               <TabBar
                 tabs={MAIN_TABS}
                 activeTab={activeTab}
@@ -388,6 +406,16 @@ export default function App() {
                 brand={brand}
                 size="sm"
               />
+              <button
+                onClick={() => {
+                  handleBackToSelector();
+                  setShowMobileMenu(false);
+                }}
+                className="w-full flex items-center justify-center gap-1.5 px-3 py-2 rounded-xl border text-xs font-medium"
+                style={{ borderColor: `${brand.primaryColor}30`, backgroundColor: `${brand.primaryColor}08`, color: brand.primaryColor }}
+              >
+                <LayoutGrid size={12} /> Volver al inicio — Cambiar dashboard
+              </button>
             </div>
           )}
         </div>

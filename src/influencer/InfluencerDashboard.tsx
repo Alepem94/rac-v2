@@ -782,7 +782,12 @@ export const InfluencerDashboard: React.FC<{ brand: BrandConfig; onBack: () => v
     <div className="min-h-screen" style={{backgroundColor: brand.bgColor}}>
       <header className="sticky top-0 z-30 border-b backdrop-blur-md" style={{backgroundColor:`${brand.cardBg}F0`, borderColor:`${brand.primaryColor}15`}}>
         <div className="max-w-screen-2xl mx-auto px-4 py-3 flex items-center gap-4">
-          <button onClick={onBack} className="p-2 rounded-xl" style={{backgroundColor:`${brand.primaryColor}10`, color:brand.primaryColor}}><ArrowLeft size={16}/></button>
+          <button onClick={onBack} className="flex items-center gap-1.5 px-3 py-1.5 rounded-xl border text-xs font-medium shrink-0" style={{backgroundColor:`${brand.primaryColor}08`, borderColor:`${brand.primaryColor}30`, color:brand.primaryColor}}><ArrowLeft size={14}/> <span className="hidden sm:inline">Inicio</span><span className="sm:hidden">Cambiar</span></button>
+          <div className="hidden sm:flex items-center gap-2">
+            <img src={brand.cardBg ? "https://ajustes-rac.vercel.app/rac-logo.png" : ""} alt="RAC" className="h-6 w-auto object-contain hidden lg:block" onError={(e)=> (e.currentTarget.style.display="none")} />
+            <span className="hidden lg:inline text-xs" style={{color:`${brand.textColor}30`}}>×</span>
+            <img src="/republica-logo.svg" alt="República" className="h-5 w-auto object-contain hidden lg:block" />
+          </div>
           <div className="flex items-center gap-3 min-w-0 flex-1">
             <img src={selectedCampaign.campaign_cover || selectedCampaign.campaign_thumbnail} alt={selectedCampaign.campaign_name} className="w-10 h-10 rounded-xl object-cover hidden sm:block" />
             <div className="min-w-0">
