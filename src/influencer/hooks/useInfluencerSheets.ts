@@ -95,29 +95,32 @@ export const useInfluencerSheets = () => {
       }
       if(failed.length===entries.length) throw new Error("No se pudo cargar ninguna hoja");
 
-      // Parsear - si alguna hoja vacía, fallback a mocks parcial
-      const hasData = (results.campaigns?.length||0) > 3;
-      if(!hasData){
-        setData(MOCK_INFLUENCER_DATA);
-        setUsingMock(true);
-        setConnected(false);
-        if(failed.length>0) setError(`Usando datos demo. Hojas no encontradas: ${failed.join(", ")}`);
-        return;
-      }
+      // Detecta automáticamente en qué fila están los encabezados reales.
+      // Soporta ambos formatos: con fila de título (título en fila 1, headers en fila 2)
+      // o sin ella (headers directo en fila 1), como los CSV de docs/influencer-template.
+      const findHeaderRow = (rows: string[][], markers: string[]): number => {
+        const limit = Math.min(rows.length, 5);
+        for (let i = 0; i < limit; i++) {
+          const rowLower = (rows[i] || []).map(c => String(c).trim().toLowerCase());
+          if (markers.some(m => rowLower.includes(m))) return i;
+        }
+        return 0;
+      };
 
       // Helpers para mapear por header
-      const toObjects = (rows:string[][], startRow=1)=>{
-        if(rows.length<=startRow) return [];
-        const headers=rows[startRow].map(h=> h.trim().toLowerCase());
-        return rows.slice(startRow+1).map(r=>{
-          const o:any={};
-          headers.forEach((h,i)=> o[h]=r[i]||"");
+      const toObjects = (rows: string[][], headerRowIdx: number) => {
+        if (rows.length <= headerRowIdx) return [];
+        const headers = rows[headerRowIdx].map(h => h.trim().toLowerCase());
+        return rows.slice(headerRowIdx + 1).map(r => {
+          const o: any = {};
+          headers.forEach((h, i) => o[h] = r[i] || "");
           return o;
         });
       };
 
       // 01_CAMPAIGNS
-      const campRows=toObjects(results.campaigns||[],1);
+      const campHeaderIdx = findHeaderRow(results.campaigns || [], ["campaign_id"]);
+      const campRows=toObjects(results.campaigns||[],campHeaderIdx);
       const campaigns=campRows.filter(r=>r.campaign_id).map((r:any)=>({
         campaign_id: r.campaign_id,
         campaign_name: r.campaign_name||r.campaign_id,
@@ -150,7 +153,8 @@ export const useInfluencerSheets = () => {
         has_projections: parseBool(r.has_projections),
       }));
 
-      const infRows=toObjects(results.influencers||[],1);
+      const infHeaderIdx = findHeaderRow(results.influencers || [], ["influencer_id"]);
+      const infRows=toObjects(results.influencers||[],infHeaderIdx);
       const influencers=infRows.filter(r=>r.influencer_id).map((r:any)=>({
         influencer_id: r.influencer_id,
         influencer_name: r.influencer_name||r.influencer_id,
@@ -172,7 +176,8 @@ export const useInfluencerSheets = () => {
         influencer_notes: r.influencer_notes||"",
       }));
 
-      const ciRows=toObjects(results.campaignInfluencers||[],1);
+      const ciHeaderIdx = findHeaderRow(results.campaignInfluencers || [], ["influencer_cost"]);
+      const ciRows=toObjects(results.campaignInfluencers||[],ciHeaderIdx);
       const campaignInfluencers=ciRows.filter(r=>r.campaign_id&&r.influencer_id).map((r:any)=>({
         campaign_id: r.campaign_id,
         influencer_id: r.influencer_id,
@@ -182,7 +187,8 @@ export const useInfluencerSheets = () => {
         notes: r.notes||"",
       }));
 
-      const contentRows=toObjects(results.contents||[],1);
+      const contentHeaderIdx = findHeaderRow(results.contents || [], ["content_id"]);
+      const contentRows=toObjects(results.contents||[],contentHeaderIdx);
       const contents=contentRows.filter(r=>r.content_id).map((r:any)=>({
         content_id: r.content_id,
         campaign_id: r.campaign_id,
@@ -204,7 +210,8 @@ export const useInfluencerSheets = () => {
         notes: r.notes||"",
       }));
 
-      const metRows=toObjects(results.metrics||[],1);
+      const metHeaderIdx = findHeaderRow(results.metrics || [], ["video_views", "impressions"]);
+      const metRows=toObjects(results.metrics||[],metHeaderIdx);
       const metrics=metRows.filter(r=>r.content_id).map((r:any)=>{
         const likes=parseNumber(r.likes), comments=parseNumber(r.comments), shares=parseNumber(r.shares), saves=parseNumber(r.saves);
         let interactions=parseNumber(r.interactions);
@@ -236,7 +243,8 @@ export const useInfluencerSheets = () => {
         };
       });
 
-      const sentRows=toObjects(results.sentiments||[],1);
+      const sentHeaderIdx = findHeaderRow(results.sentiments || [], ["positive_percentage"]);
+      const sentRows=toObjects(results.sentiments||[],sentHeaderIdx);
       const sentiments=sentRows.filter(r=>r.campaign_id).map((r:any)=>({
         campaign_id: r.campaign_id,
         content_id: r.content_id||"",
@@ -253,7 +261,8 @@ export const useInfluencerSheets = () => {
         sentiment_notes: r.sentiment_notes||"",
       }));
 
-      const comRows=toObjects(results.comments||[],1);
+      const comHeaderIdx = findHeaderRow(results.comments || [], ["comment_text"]);
+      const comRows=toObjects(results.comments||[],comHeaderIdx);
       const comments=comRows.filter(r=>r.comment_id||r.comment_text).map((r:any)=>({
         comment_id: r.comment_id||`${r.campaign_id}-${Math.random()}`,
         campaign_id: r.campaign_id,
@@ -272,7 +281,8 @@ export const useInfluencerSheets = () => {
         comment_url: r.comment_url||"",
       }));
 
-      const insRows=toObjects(results.insights||[],1);
+      const insHeaderIdx = findHeaderRow(results.insights || [], ["insight_type"]);
+      const insRows=toObjects(results.insights||[],insHeaderIdx);
       const insights=insRows.filter(r=>r.insight_id||r.title).map((r:any)=>({
         insight_id: r.insight_id||`${r.campaign_id}-${Math.random()}`,
         campaign_id: r.campaign_id,
@@ -286,7 +296,8 @@ export const useInfluencerSheets = () => {
         is_featured: parseBool(r.is_featured),
       }));
 
-      const mediaRows=toObjects(results.media||[],1);
+      const mediaHeaderIdx = findHeaderRow(results.media || [], ["media_type"]);
+      const mediaRows=toObjects(results.media||[],mediaHeaderIdx);
       const media=mediaRows.filter(r=>r.media_id||r.url).map((r:any)=>({
         media_id: r.media_id||`${r.campaign_id}-${Math.random()}`,
         campaign_id: r.campaign_id,
@@ -301,7 +312,8 @@ export const useInfluencerSheets = () => {
         is_featured: parseBool(r.is_featured),
       }));
 
-      const projRows=toObjects(results.projections||[],1);
+      const projHeaderIdx = findHeaderRow(results.projections || [], ["projected_views"]);
+      const projRows=toObjects(results.projections||[],projHeaderIdx);
       const projections=projRows.filter(r=>r.campaign_id).map((r:any)=>({
         campaign_id: r.campaign_id,
         influencer_id: r.influencer_id||"",
@@ -312,6 +324,15 @@ export const useInfluencerSheets = () => {
         projected_er: parseNumber(r.projected_er),
         projection_notes: r.projection_notes||"",
       }));
+
+      // Si tras parsear no hay ninguna campaña con campaign_id válido, usa mocks
+      if(campaigns.length===0){
+        setData(MOCK_INFLUENCER_DATA);
+        setUsingMock(true);
+        setConnected(false);
+        setError(`No se encontraron campañas en 01_CAMPAIGNS. Revisa que la fila de encabezados tenga la columna "campaign_id" y que haya al menos una fila de datos debajo.${failed.length>0 ? ` Hojas no encontradas: ${failed.join(", ")}` : ""}`);
+        return;
+      }
 
       const newData={ campaigns, influencers, campaignInfluencers, contents, metrics, sentiments, comments, insights, media, projections };
       setData(newData as any);
