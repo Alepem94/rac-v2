@@ -120,17 +120,12 @@ export default function App() {
       <div className="min-h-screen flex items-center justify-center p-6" style={{ backgroundColor: data.brand.bgColor }}>
         <div className="max-w-4xl w-full">
           <div className="text-center mb-8">
-            <div className="flex items-center justify-center gap-4 mb-4">
-              {data.brand.logoUrl ? (
-                <img src={data.brand.logoUrl} alt={data.brand.accountName} className="h-12 w-auto object-contain rounded-xl bg-white p-1.5 shadow-sm" style={{ border: `1px solid ${data.brand.primaryColor}15` }} onError={(e) => ((e.currentTarget as HTMLImageElement).style.display = "none")} />
-              ) : (
-                <div className="w-12 h-12 rounded-xl flex items-center justify-center text-white font-bold text-lg" style={{ background: `linear-gradient(135deg, ${data.brand.primaryColor}, ${data.brand.secondaryColor})` }}>{data.brand.accountName.charAt(0)}</div>
-              )}
-              <span className="text-xl font-light" style={{ color: `${data.brand.textColor}30` }}>×</span>
-              <img src="/republica-logo.svg" alt="Agencia República" className="h-10 w-auto object-contain" onError={(e) => ((e.currentTarget as HTMLImageElement).style.display = "none")} />
+            <div className="flex items-center justify-center gap-6 mb-6">
+              <img src={data.brand.logoUrl || "/rac-logo.png"} alt="RAC" className="h-14 w-14 rounded-full object-contain shadow-sm" style={{ backgroundColor: "transparent" }} onError={(e) => ((e.currentTarget as HTMLImageElement).style.display = "none")} />
+              <span className="text-2xl font-light" style={{ color: `${data.brand.textColor}20` }}>×</span>
+              <img src="/republica-logo.svg" alt="República" className="h-8 w-auto object-contain" onError={(e) => ((e.currentTarget as HTMLImageElement).style.display = "none")} />
             </div>
-            <h1 className="text-2xl font-bold" style={{ color: data.brand.textColor }}>{data.brand.accountName} <span className="font-light" style={{ color: `${data.brand.textColor}55` }}>× República</span></h1>
-            <p className="text-sm mt-1" style={{ color: `${data.brand.textColor}66` }}>Selecciona el dashboard que quieres consultar</p>
+            <p className="text-sm" style={{ color: `${data.brand.textColor}66` }}>Selecciona el dashboard que quieres consultar</p>
           </div>
           <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
             <button onClick={() => handleSelectMode("mensual")} className="group text-left rounded-2xl p-6 border-2 hover:shadow-xl transition-all hover:-translate-y-1" style={{ backgroundColor: data.brand.cardBg, borderColor: `${data.brand.primaryColor}20` }}>
@@ -218,46 +213,24 @@ export default function App() {
         }}
       >
         <div className="max-w-screen-2xl mx-auto px-4 py-3">
-          <div className="flex items-center justify-between gap-4">
+          <div className="flex items-center justify-between gap-2">
             {/* Logo & Brand */}
-            <div className="flex items-center gap-3 min-w-0">
-              {brand.logoUrl ? (
-                <img
-                  src={brand.logoUrl}
-                  alt={brand.accountName}
-                  className="h-10 w-auto object-contain"
-                  onError={(e) => ((e.currentTarget as HTMLImageElement).style.display = "none")}
-                />
-              ) : (
-                <div
-                  className="w-10 h-10 rounded-xl flex items-center justify-center text-white font-bold"
-                  style={{
-                    background: `linear-gradient(135deg, ${brand.primaryColor}, ${brand.secondaryColor})`,
-                  }}
-                >
-                  {brand.accountName.charAt(0)}
-                </div>
-              )}
-              <span className="hidden sm:inline text-sm font-light" style={{ color: `${brand.textColor}30` }}>×</span>
-              <img src="/republica-logo.svg" alt="República" className="hidden sm:block h-7 w-auto object-contain" onError={(e) => ((e.currentTarget as HTMLImageElement).style.display = "none")} />
-              <div className="min-w-0 hidden sm:block">
-                <div
-                  className="font-bold text-base truncate"
-                  style={{ color: brand.textColor }}
-                >
-                  {brand.accountName}
-                </div>
-                <div
-                  className="text-xs flex items-center gap-1"
-                  style={{ color: `${brand.textColor}66` }}
-                >
-                  <BarChart2 size={11} />
+            <div className="flex items-center gap-2 min-w-0 shrink-0">
+              <img
+                src={brand.logoUrl || "/rac-logo.png"}
+                alt="RAC"
+                className="h-9 w-9 rounded-full object-contain shrink-0"
+                style={{ backgroundColor: "transparent" }}
+                onError={(e) => ((e.currentTarget as HTMLImageElement).style.display = "none")}
+              />
+              <span className="text-sm font-light hidden sm:inline" style={{ color: `${brand.textColor}30` }}>×</span>
+              <img src="/republica-logo.svg" alt="República" className="h-6 w-auto object-contain shrink-0 hidden sm:block" style={{ backgroundColor: "transparent" }} onError={(e) => ((e.currentTarget as HTMLImageElement).style.display = "none")} />
+              <div className="min-w-0 hidden lg:block">
+                <div className="font-bold text-sm leading-none truncate" style={{ color: brand.textColor }}>{brand.accountName}</div>
+                <div className="text-[10px] flex items-center gap-1" style={{ color: `${brand.textColor}66` }}>
+                  <BarChart2 size={10} />
                   Marketing Dashboard
                 </div>
-              </div>
-              <div className="min-w-0 sm:hidden">
-                <div className="font-bold text-sm truncate" style={{ color: brand.textColor }}>{brand.accountName}</div>
-                <div className="text-[10px]" style={{ color: `${brand.textColor}66` }}>× República</div>
               </div>
             </div>
 
