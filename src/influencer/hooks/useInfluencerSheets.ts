@@ -32,15 +32,28 @@ const parseDate = (v: any): string => {
 
 const CACHE_KEY = "influencer-dashboard-cache";
 const sleep = (ms:number)=> new Promise(r=>setTimeout(r,ms));
+
+// Lee el mensaje real que manda la API de Google (permiso, cuota, key inválida...)
+// en vez de quedarnos solo con "HTTP 403" — así el error que se ve en pantalla
+// dice qué pasó de verdad y no toca adivinar.
+const buildHttpError = async (res: Response): Promise<Error> => {
+  try{
+    const body = await res.clone().json();
+    const msg = body?.error?.message;
+    if(msg) return new Error(`Google Sheets (${res.status}): ${msg}`);
+  }catch{}
+  return new Error(`Google Sheets: HTTP ${res.status}`);
+};
+
 const fetchWithRetry = async (url:string, retries=3): Promise<Response> => {
   let lastErr:Error|null=null;
   for(let i=0;i<retries;i++){
     try{
       const res=await fetch(url);
       if(res.ok) return res;
-      if(res.status===429||res.status>=500){ await sleep(Math.pow(2,i)*1000+Math.random()*500); lastErr=new Error(`HTTP ${res.status}`); continue; }
-      throw new Error(`HTTP ${res.status}`);
-    }catch(e){ lastErr=e as Error; if(i<retries-1) await sleep(Math.pow(2,i)*800); }
+      if(res.status===429||res.status>=500){ lastErr=await buildHttpError(res); await sleep(Math.pow(2,i)*800+Math.random()*300); continue; }
+      throw await buildHttpError(res);
+    }catch(e){ lastErr=e as Error; if(i<retries-1) await sleep(Math.pow(2,i)*500); }
   }
   throw lastErr!;
 };
@@ -73,27 +86,54 @@ export const useInfluencerSheets = () => {
     setLoading(true);
     setError(null);
     try{
-      const fetchRange=async(range:string)=>{
-        const url=`https://sheets.googleapis.com/v4/spreadsheets/${cfg.sheetId}/values/${encodeURIComponent(range)}?key=${cfg.apiKey}`;
-        const res=await fetchWithRetry(url,3);
-        const j=await res.json();
-        return (j.values||[]) as string[][];
-      };
       const entries=Object.entries(INFLUENCER_RANGES) as [keyof typeof INFLUENCER_RANGES, string][];
-      const batchSize=5;
+      const keys=entries.map(([k])=>k);
+      const ranges=entries.map(([,r])=>r);
       const results:Record<string,string[][]>={};
       const failed:string[]=[];
-      for(let i=0;i<entries.length;i+=batchSize){
-        const batch=entries.slice(i,i+batchSize);
-        const r=await Promise.allSettled(batch.map(([k,range])=> fetchRange(range).then(v=>({k,v}))));
-        r.forEach((res,idx)=>{
-          const [k]=batch[idx];
-          if(res.status==="fulfilled") results[k]=res.value.v;
-          else { failed.push(k); results[k]=[]; }
-        });
-        if(i+batchSize<entries.length) await sleep(150);
+
+      // Camino rápido: 1 sola llamada a batchGet trae las 12 hojas de un jalón.
+      // Antes se hacían 12 requests separados (5 en paralelo, con pausas entre
+      // tandas, y hasta 3 reintentos con backoff cada uno) — de ahí la carga
+      // lenta y el error, sobre todo si la API de Sheets devolvía 429 (cuota)
+      // en alguna de esas 12 llamadas.
+      const fetchBatched=async()=>{
+        const url=new URL(`https://sheets.googleapis.com/v4/spreadsheets/${cfg.sheetId}/values:batchGet`);
+        ranges.forEach(r=> url.searchParams.append("ranges", r));
+        url.searchParams.set("key", cfg.apiKey);
+        const res=await fetchWithRetry(url.toString(),3);
+        const j=await res.json();
+        const valueRanges=(j.valueRanges||[]) as {values?:string[][]}[];
+        keys.forEach((k,i)=>{ results[k]=valueRanges[i]?.values||[]; });
+      };
+
+      // Camino de respaldo (solo si el rápido falla completo): pide hoja por
+      // hoja, como antes. batchGet falla TODO si una sola pestaña referenciada
+      // no existe (p.ej. se renombró una tab en el Sheet) — este modo evita que
+      // eso tumbe el dashboard entero; solo esa hoja específica queda vacía.
+      const fetchOneByOne=async()=>{
+        const batchSize=5;
+        for(let i=0;i<entries.length;i+=batchSize){
+          const batch=entries.slice(i,i+batchSize);
+          const r=await Promise.allSettled(batch.map(([k,range])=>{
+            const url=`https://sheets.googleapis.com/v4/spreadsheets/${cfg.sheetId}/values/${encodeURIComponent(range)}?key=${cfg.apiKey}`;
+            return fetchWithRetry(url,2).then(res=>res.json()).then(j=>({k,v:(j.values||[]) as string[][]}));
+          }));
+          r.forEach((res,idx)=>{
+            const [k]=batch[idx];
+            if(res.status==="fulfilled") results[k]=res.value.v;
+            else { failed.push(k); results[k]=[]; }
+          });
+          if(i+batchSize<entries.length) await sleep(100);
+        }
+      };
+
+      try{
+        await fetchBatched();
+      }catch(batchErr:any){
+        await fetchOneByOne();
+        if(failed.length===entries.length) throw batchErr;
       }
-      if(failed.length===entries.length) throw new Error("No se pudo cargar ninguna hoja");
 
       // Detecta automáticamente en qué fila están los encabezados reales.
       // Soporta ambos formatos: con fila de título (título en fila 1, headers en fila 2)
