@@ -5,6 +5,10 @@ import { BrandConfig } from "../types";
 import { MetricCard } from "../components/ui/MetricCard";
 import { ChartCard } from "../components/ui/ChartCard";
 import { calculateER, calculateCPV, calculateCPE, calculateCPC, formatNumber, formatCurrency, formatPercent, sumMetrics } from "./utils/calculations";
+import { InfluencerAvatar } from "./components/InfluencerAvatar";
+import { ContentEmbed } from "./components/ContentEmbed";
+import { ContentThumb } from "./components/ContentThumb";
+import { resolveImageUrl } from "./utils/media";
 
 const TABS = [
   { id: "resumen", label: "Resumen" },
@@ -199,7 +203,7 @@ export const InfluencerDashboard: React.FC<{ brand: BrandConfig; onBack: () => v
             <div className="space-y-2">
               {influencerData.slice(0,5).map((inf:any)=>(
                 <div key={inf.influencer.influencer_id} className="flex items-center gap-3 p-2 rounded-xl hover:opacity-80 cursor-pointer" style={{border:`1px solid ${brand.primaryColor}10`}} onClick={()=>{setSelectedInfluencer(inf.influencer.influencer_id); setActiveTab("influencers");}}>
-                  <img src={inf.influencer.instagram_photo || inf.influencer.tiktok_photo || "https://i.pravatar.cc/100"} alt={inf.influencer.influencer_name} className="w-9 h-9 rounded-full object-cover" />
+                  <InfluencerAvatar influencer={inf.influencer} size={36} brandColor={brand.primaryColor} />
                   <div className="flex-1 min-w-0">
                     <div className="text-xs font-semibold truncate" style={{color:brand.textColor}}>{inf.influencer.influencer_name}</div>
                     <div className="text-[10px]" style={{color:`${brand.textColor}66`}}>{inf.platforms.join(" • ")} • {inf.contentCount} contenidos</div>
@@ -220,7 +224,7 @@ export const InfluencerDashboard: React.FC<{ brand: BrandConfig; onBack: () => v
             <div className="grid grid-cols-3 gap-2">
               {contentData.slice(0,6).map(({content, metrics, er})=>(
                 <div key={content.content_id} className="rounded-xl overflow-hidden border cursor-pointer" style={{borderColor:`${brand.primaryColor}10`}} onClick={()=>{setSelectedContent(content.content_id); setActiveTab("contenidos");}}>
-                  <img src={content.thumbnail_url || "https://images.unsplash.com/photo-1522202176988-66273c2fd55f?w=300"} alt={content.content_title} className="w-full h-16 object-cover" />
+                  <ContentThumb src={content.thumbnail_url} alt={content.content_title} className="w-full h-16 object-cover" primaryColor={brand.primaryColor} />
                   <div className="p-1.5">
                     <div className="text-[10px] font-semibold truncate" style={{color:brand.textColor}}>{metrics?.views ? formatNumber(metrics.views) : "—"} • {formatPercent(er,1)}</div>
                     <div className="text-[9px] truncate" style={{color:`${brand.textColor}66`}}>{content.platform} • {content.format}</div>
@@ -278,7 +282,7 @@ export const InfluencerDashboard: React.FC<{ brand: BrandConfig; onBack: () => v
                   const plat = inf.platformBreakdown.find((x:any)=> x.platform===p.platform);
                   return (
                     <div key={inf.influencer.influencer_id} className="flex items-center gap-2 p-2 rounded-lg border" style={{borderColor:`${brand.primaryColor}10`}}>
-                      <img src={inf.influencer.instagram_photo || inf.influencer.tiktok_photo} className="w-7 h-7 rounded-full" alt="" />
+                      <InfluencerAvatar influencer={inf.influencer} size={28} brandColor={brand.primaryColor} />
                       <span className="text-xs flex-1" style={{color:brand.textColor}}>{inf.influencer.influencer_name}</span>
                       <span className="text-xs font-semibold" style={{color:brand.textColor}}>{formatNumber(plat?.views||0)} • {formatPercent(plat?.er,1)}</span>
                     </div>
@@ -291,7 +295,7 @@ export const InfluencerDashboard: React.FC<{ brand: BrandConfig; onBack: () => v
               <div className="grid grid-cols-3 gap-2">
                 {contentData.filter(c=> c.content.platform===p.platform).slice(0,6).map(({content, metrics})=>(
                   <div key={content.content_id} className="rounded-lg overflow-hidden border" style={{borderColor:`${brand.primaryColor}10`}}>
-                    <img src={content.thumbnail_url} className="w-full h-14 object-cover" alt="" />
+                    <ContentThumb src={content.thumbnail_url} className="w-full h-14 object-cover" primaryColor={brand.primaryColor} />
                     <div className="p-1 text-[10px] text-center" style={{color:brand.textColor}}>{formatNumber(metrics?.views||0)}</div>
                   </div>
                 ))}
@@ -332,7 +336,7 @@ export const InfluencerDashboard: React.FC<{ brand: BrandConfig; onBack: () => v
           <div className="grid grid-cols-12 gap-4">
             <div className="col-span-12 lg:col-span-3">
               <ChartCard title={inf.influencer.influencer_name} brand={brand}>
-                <img src={inf.influencer.instagram_photo || inf.influencer.tiktok_photo} className="w-20 h-20 rounded-full mx-auto" alt="" />
+                <div className="mx-auto w-fit"><InfluencerAvatar influencer={inf.influencer} size={80} brandColor={brand.primaryColor} /></div>
                 <div className="text-center mt-2">
                   <div className="text-sm font-bold" style={{color:brand.textColor}}>{inf.influencer.influencer_name}</div>
                   <div className="text-xs" style={{color:`${brand.textColor}66`}}>{inf.influencer.content_style}</div>
@@ -391,7 +395,7 @@ export const InfluencerDashboard: React.FC<{ brand: BrandConfig; onBack: () => v
                     const m = metricsByContent.get(c.content_id);
                     return (
                       <div key={c.content_id} className="rounded-xl border overflow-hidden" style={{borderColor:`${brand.primaryColor}10`}}>
-                        <img src={c.thumbnail_url} className="w-full h-24 object-cover" alt="" />
+                        <ContentThumb src={c.thumbnail_url} className="w-full h-24 object-cover" primaryColor={brand.primaryColor} />
                         <div className="p-2">
                           <div className="text-xs font-semibold truncate" style={{color:brand.textColor}}>{c.content_title || c.format}</div>
                           <div className="text-[10px]" style={{color:`${brand.textColor}66`}}>{c.platform} • {formatNumber(m?.views||0)} • {formatPercent(m ? (m.interactions/m.views*100) : null,1)}</div>
@@ -423,7 +427,9 @@ export const InfluencerDashboard: React.FC<{ brand: BrandConfig; onBack: () => v
                           <span className="text-[10px] px-1.5 py-0.5 rounded-full" style={{backgroundColor: com.sentiment==="Positive" ? "#10B981" : com.sentiment==="Negative" ? "#EF4444" : "#64748B", color:"#fff"}}>{com.sentiment}</span>
                         </div>
                         <div className="text-xs mt-1" style={{color:brand.textColor}}>"{com.comment_text}"</div>
-                        {com.screenshot_url && <img src={com.screenshot_url} className="w-full mt-2 rounded-lg" alt="" />}
+                        {resolveImageUrl(com.screenshot_url || com.screenshot_embed) && (
+                          <img src={resolveImageUrl(com.screenshot_url || com.screenshot_embed)} className="w-full mt-2 rounded-lg" alt="" onError={(e)=> (e.currentTarget.style.display="none")} />
+                        )}
                       </div>
                     ))}
                   </div>
@@ -469,7 +475,7 @@ export const InfluencerDashboard: React.FC<{ brand: BrandConfig; onBack: () => v
           {filtered.map((inf:any)=>(
             <div key={inf.influencer.influencer_id} className="rounded-2xl border p-4 cursor-pointer hover:shadow-md transition-all" style={{backgroundColor: brand.cardBg, borderColor:`${brand.primaryColor}15`}} onClick={()=> setSelectedInfluencer(inf.influencer.influencer_id)}>
               <div className="flex gap-3">
-                <img src={inf.influencer.instagram_photo || inf.influencer.tiktok_photo} className="w-12 h-12 rounded-full object-cover" alt="" />
+                <InfluencerAvatar influencer={inf.influencer} size={48} brandColor={brand.primaryColor} />
                 <div className="flex-1 min-w-0">
                   <div className="text-sm font-bold truncate" style={{color:brand.textColor}}>{inf.influencer.influencer_name}</div>
                   <div className="text-xs truncate" style={{color:`${brand.textColor}66`}}>{inf.influencer.content_style}</div>
@@ -513,7 +519,7 @@ export const InfluencerDashboard: React.FC<{ brand: BrandConfig; onBack: () => v
             <div className="grid grid-cols-12 gap-4">
               <div className="col-span-12 lg:col-span-5">
                 <ChartCard title={item.content.content_title || item.content.format} brand={brand}>
-                  {item.content.video_embed ? <div className="aspect-video" dangerouslySetInnerHTML={{__html: item.content.video_embed}}/> : <img src={item.content.thumbnail_url} className="w-full rounded-xl" alt="" />}
+                  <ContentEmbed content={item.content} primaryColor={brand.primaryColor} textColor={brand.textColor} />
                   <a href={item.content.content_url} target="_blank" className="flex items-center gap-1 text-xs mt-2" style={{color:brand.primaryColor}}><ExternalLink size={12}/> Ver contenido original</a>
                   <div className="text-xs mt-2" style={{color:`${brand.textColor}77`}}>{item.content.content_description}</div>
                 </ChartCard>
@@ -544,7 +550,9 @@ export const InfluencerDashboard: React.FC<{ brand: BrandConfig; onBack: () => v
                       <div key={c.comment_id} className="p-2 border-b last:border-0" style={{borderColor:`${brand.primaryColor}10`}}>
                         <div className="text-xs font-bold" style={{color:brand.textColor}}>{c.comment_author} <span className="text-[10px] px-1 rounded" style={{backgroundColor: c.sentiment==="Positive" ? "#10B981" : c.sentiment==="Negative" ? "#EF4444" : "#64748B", color:"#fff"}}>{c.sentiment}</span></div>
                         <div className="text-xs" style={{color:brand.textColor}}>"{c.comment_text}"</div>
-                        {c.screenshot_url && <img src={c.screenshot_url} className="w-full mt-2 rounded-lg" alt="" />}
+                        {resolveImageUrl(c.screenshot_url || c.screenshot_embed) && (
+                          <img src={resolveImageUrl(c.screenshot_url || c.screenshot_embed)} className="w-full mt-2 rounded-lg" alt="" onError={(e)=> (e.currentTarget.style.display="none")} />
+                        )}
                       </div>
                     ))}
                   </ChartCard>
@@ -585,13 +593,13 @@ export const InfluencerDashboard: React.FC<{ brand: BrandConfig; onBack: () => v
             {filtered.map(({content, influencer, metrics, er})=>(
               <div key={content.content_id} onClick={()=> setSelectedContent(content.content_id)} className="rounded-2xl border overflow-hidden cursor-pointer hover:shadow-md transition-all" style={{backgroundColor:brand.cardBg, borderColor:`${brand.primaryColor}15`}}>
                 <div className="relative">
-                  <img src={content.thumbnail_url || "https://images.unsplash.com/photo-1522202176988-66273c2fd55f?w=400"} alt={content.content_title} className="w-full h-32 object-cover" />
+                  <ContentThumb src={content.thumbnail_url} alt={content.content_title} className="w-full h-32 object-cover" primaryColor={brand.primaryColor} />
                   <span className="absolute top-2 left-2 text-[10px] px-1.5 py-0.5 rounded-full text-white" style={{backgroundColor: content.platform==="Instagram" ? "#E4405F" : content.platform==="TikTok" ? "#000" : "#1877F2"}}>{content.platform}</span>
                   <span className="absolute top-2 right-2 text-[10px] px-1.5 py-0.5 rounded-full" style={{backgroundColor:`${brand.primaryColor}`, color:"#fff"}}>{content.format}</span>
                 </div>
                 <div className="p-2">
                   <div className="text-xs font-semibold truncate" style={{color:brand.textColor}}>{content.content_title || content.format}</div>
-                  <div className="text-[10px] flex items-center gap-1" style={{color:`${brand.textColor}66`}}><img src={influencer?.instagram_photo || "https://i.pravatar.cc/100"} className="w-4 h-4 rounded-full" alt="" />{influencer?.influencer_name}</div>
+                  <div className="text-[10px] flex items-center gap-1" style={{color:`${brand.textColor}66`}}><InfluencerAvatar influencer={influencer} size={16} brandColor={brand.primaryColor} />{influencer?.influencer_name}</div>
                   <div className="flex gap-2 mt-1 text-[10px]">
                     <span style={{color:brand.textColor}}><b>{formatNumber(metrics?.views||0)}</b> views</span>
                     <span style={{color:`${brand.textColor}66`}}>{formatPercent(er,1)} ER</span>
@@ -616,7 +624,7 @@ export const InfluencerDashboard: React.FC<{ brand: BrandConfig; onBack: () => v
               <tbody>
                 {filtered.map(({content, influencer, metrics, er})=>(
                   <tr key={content.content_id} className="border-t hover:opacity-70 cursor-pointer" style={{borderColor:`${brand.primaryColor}08`}} onClick={()=> setSelectedContent(content.content_id)}>
-                    <td className="px-3 py-2 flex items-center gap-2"><img src={content.thumbnail_url} className="w-8 h-8 rounded object-cover" alt="" /><span style={{color:brand.textColor}}>{content.content_title || content.format}</span></td>
+                    <td className="px-3 py-2 flex items-center gap-2"><ContentThumb src={content.thumbnail_url} className="w-8 h-8 rounded object-cover" primaryColor={brand.primaryColor} /><span style={{color:brand.textColor}}>{content.content_title || content.format}</span></td>
                     <td className="px-3 py-2" style={{color:brand.textColor}}>{influencer?.influencer_name}</td>
                     <td className="px-3 py-2" style={{color:brand.textColor}}>{content.platform} • {content.format}</td>
                     <td className="px-3 py-2 text-right" style={{color:brand.textColor}}>{formatNumber(metrics?.views||0)}</td>
@@ -661,7 +669,7 @@ export const InfluencerDashboard: React.FC<{ brand: BrandConfig; onBack: () => v
                   const inf = influencerMap.get(s.influencer_id);
                   return (
                     <tr key={s.influencer_id} className="border-t" style={{borderColor:`${brand.primaryColor}08`}}>
-                      <td className="p-2 flex items-center gap-2"><img src={inf?.instagram_photo} className="w-6 h-6 rounded-full" alt="" /><span style={{color:brand.textColor}}>{inf?.influencer_name}</span></td>
+                      <td className="p-2 flex items-center gap-2"><InfluencerAvatar influencer={inf} size={24} brandColor={brand.primaryColor} /><span style={{color:brand.textColor}}>{inf?.influencer_name}</span></td>
                       <td className="p-2 text-center" style={{color:"#10B981"}}>{s.positive_percentage}%</td>
                       <td className="p-2 text-center" style={{color:"#64748B"}}>{s.neutral_percentage}%</td>
                       <td className="p-2 text-center" style={{color:"#EF4444"}}>{s.negative_percentage}%</td>
@@ -693,7 +701,9 @@ export const InfluencerDashboard: React.FC<{ brand: BrandConfig; onBack: () => v
                   </div>
                   <div className="text-xs mt-1 flex gap-1" style={{color:`${brand.textColor}66`}}><Quote size={10}/>"{c.comment_text}"</div>
                   <div className="text-[10px] mt-1" style={{color:`${brand.textColor}55`}}>{inf?.influencer_name} • {c.platform} {c.theme && `• ${c.theme}`}</div>
-                  {c.screenshot_url && <img src={c.screenshot_url} alt="screenshot" className="w-full mt-2 rounded-lg border" style={{borderColor:`${brand.primaryColor}10`}} />}
+                  {resolveImageUrl(c.screenshot_url || c.screenshot_embed) && (
+                    <img src={resolveImageUrl(c.screenshot_url || c.screenshot_embed)} alt="screenshot" className="w-full mt-2 rounded-lg border" style={{borderColor:`${brand.primaryColor}10`}} onError={(e)=> (e.currentTarget.style.display="none")} />
+                  )}
                 </div>
               );
             })}
@@ -789,7 +799,14 @@ export const InfluencerDashboard: React.FC<{ brand: BrandConfig; onBack: () => v
             <img src="/republica-logo.svg" alt="República" className="h-5 w-auto object-contain hidden lg:block" />
           </div>
           <div className="flex items-center gap-3 min-w-0 flex-1">
-            <img src={selectedCampaign.campaign_cover || selectedCampaign.campaign_thumbnail} alt={selectedCampaign.campaign_name} className="w-10 h-10 rounded-xl object-cover hidden sm:block" />
+            {(selectedCampaign.campaign_cover || selectedCampaign.campaign_thumbnail) && (
+              <img
+                src={selectedCampaign.campaign_cover || selectedCampaign.campaign_thumbnail}
+                alt={selectedCampaign.campaign_name}
+                className="w-10 h-10 rounded-xl object-cover hidden sm:block"
+                onError={(e)=> (e.currentTarget.style.display="none")}
+              />
+            )}
             <div className="min-w-0">
               <div className="font-bold text-sm truncate" style={{color:brand.textColor}}>{selectedCampaign.campaign_name}</div>
               <div className="text-xs flex items-center gap-2" style={{color:`${brand.textColor}66`}}><span>{selectedCampaign.client_name} • {selectedCampaign.brand_name}</span><span className="px-1.5 py-0.5 rounded-full text-white text-[10px]" style={{backgroundColor: selectedCampaign.campaign_status==="Completed" ? "#10B981" : selectedCampaign.campaign_status==="Active" ? "#F59E0B" : "#64748B"}}>{selectedCampaign.campaign_status}</span></div>
