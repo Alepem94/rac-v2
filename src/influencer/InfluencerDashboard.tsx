@@ -2,12 +2,14 @@ import React, { useState, useMemo } from "react";
 import { Users, Eye, Heart, MousePointer, TrendingUp, DollarSign, Play, MessageCircle, Star, Layers, BarChart3, Search, Filter, ArrowLeft, ExternalLink, Quote, Award, Lightbulb, Target, AlertCircle } from "lucide-react";
 import { useInfluencerSheets } from "./hooks/useInfluencerSheets";
 import { BrandConfig } from "../types";
+import { Metrics } from "./types";
 import { MetricCard } from "../components/ui/MetricCard";
 import { ChartCard } from "../components/ui/ChartCard";
 import { calculateER, calculateCPV, calculateCPE, calculateCPC, formatNumber, formatCurrency, formatPercent, sumMetrics } from "./utils/calculations";
 import { InfluencerAvatar } from "./components/InfluencerAvatar";
 import { ContentEmbed } from "./components/ContentEmbed";
-import { ContentThumb } from "./components/ContentThumb";
+import { ContentHighlightCard } from "./components/ContentHighlightCard";
+import { PlatformIcon } from "./components/PlatformIcon";
 import { resolveImageUrl } from "./utils/media";
 
 const TABS = [
@@ -142,6 +144,13 @@ export const InfluencerDashboard: React.FC<{ brand: BrandConfig; onBack: () => v
     }).sort((a,b)=> (b.metrics?.views||0) - (a.metrics?.views||0));
   }, [contents, metricsByContent, influencerMap]);
 
+  // Métricas de toda la campaña, usadas como set de comparación para
+  // ContentHighlightCard en las zonas que muestran contenido a nivel campaña.
+  const campaignMetricsPool = useMemo(
+    () => contentData.map(c=>c.metrics).filter((m): m is Metrics => !!m),
+    [contentData]
+  );
+
   // Sentiment campaign level (first without content_id or with empty)
   const campaignSentiment = useMemo(()=> sentiments.find(s=> !s.content_id) || sentiments[0], [sentiments]);
   const highlightedComments = useMemo(()=> comments.filter(c=> c.is_highlighted).slice(0,6), [comments]);
@@ -222,14 +231,19 @@ export const InfluencerDashboard: React.FC<{ brand: BrandConfig; onBack: () => v
         <div className="col-span-12 lg:col-span-4 space-y-3">
           <ChartCard title="Top Contenidos" brand={brand} action={<button onClick={()=>setActiveTab("contenidos")} className="text-xs" style={{color:brand.primaryColor}}>Ver todos →</button>}>
             <div className="grid grid-cols-3 gap-2">
-              {contentData.slice(0,6).map(({content, metrics, er})=>(
-                <div key={content.content_id} className="rounded-xl overflow-hidden border cursor-pointer" style={{borderColor:`${brand.primaryColor}10`}} onClick={()=>{setSelectedContent(content.content_id); setActiveTab("contenidos");}}>
-                  <ContentThumb src={content.thumbnail_url} alt={content.content_title} className="w-full h-16 object-cover" primaryColor={brand.primaryColor} />
-                  <div className="p-1.5">
-                    <div className="text-[10px] font-semibold truncate" style={{color:brand.textColor}}>{metrics?.views ? formatNumber(metrics.views) : "—"} • {formatPercent(er,1)}</div>
-                    <div className="text-[9px] truncate" style={{color:`${brand.textColor}66`}}>{content.platform} • {content.format}</div>
-                  </div>
-                </div>
+              {contentData.slice(0,6).map(({content, influencer, metrics})=>(
+                <ContentHighlightCard
+                  key={content.content_id}
+                  content={content}
+                  influencer={influencer}
+                  metrics={metrics}
+                  comparisonSet={campaignMetricsPool}
+                  primaryColor={brand.primaryColor}
+                  imageHeightClass="h-16"
+                  compact
+                  className="cursor-pointer"
+                  onClick={()=>{setSelectedContent(content.content_id); setActiveTab("contenidos");}}
+                />
               ))}
             </div>
           </ChartCard>
@@ -293,12 +307,24 @@ export const InfluencerDashboard: React.FC<{ brand: BrandConfig; onBack: () => v
             <div>
               <h4 className="text-xs font-semibold mb-2" style={{color:brand.textColor}}>Top Contenidos en {p.platform}</h4>
               <div className="grid grid-cols-3 gap-2">
-                {contentData.filter(c=> c.content.platform===p.platform).slice(0,6).map(({content, metrics})=>(
-                  <div key={content.content_id} className="rounded-lg overflow-hidden border" style={{borderColor:`${brand.primaryColor}10`}}>
-                    <ContentThumb src={content.thumbnail_url} className="w-full h-14 object-cover" primaryColor={brand.primaryColor} />
-                    <div className="p-1 text-[10px] text-center" style={{color:brand.textColor}}>{formatNumber(metrics?.views||0)}</div>
-                  </div>
-                ))}
+                {(() => {
+                  const platformContents = contentData.filter(c=> c.content.platform===p.platform);
+                  const platformMetricsPool = platformContents.map(c=>c.metrics).filter((m): m is Metrics => !!m);
+                  return platformContents.slice(0,6).map(({content, influencer, metrics})=>(
+                    <ContentHighlightCard
+                      key={content.content_id}
+                      content={content}
+                      influencer={influencer}
+                      metrics={metrics}
+                      comparisonSet={platformMetricsPool}
+                      primaryColor={brand.primaryColor}
+                      imageHeightClass="h-14"
+                      compact
+                      className="cursor-pointer"
+                      onClick={()=>{setSelectedContent(content.content_id); setActiveTab("contenidos");}}
+                    />
+                  ));
+                })()}
               </div>
             </div>
           </div>
@@ -391,18 +417,28 @@ export const InfluencerDashboard: React.FC<{ brand: BrandConfig; onBack: () => v
 
               <ChartCard title={`Contenidos de ${inf.influencer.influencer_name} (${inf.contents.length})`} brand={brand}>
                 <div className="grid grid-cols-2 lg:grid-cols-4 gap-3">
-                  {inf.contents.map((c:any)=>{
-                    const m = metricsByContent.get(c.content_id);
-                    return (
-                      <div key={c.content_id} className="rounded-xl border overflow-hidden" style={{borderColor:`${brand.primaryColor}10`}}>
-                        <ContentThumb src={c.thumbnail_url} className="w-full h-24 object-cover" primaryColor={brand.primaryColor} />
-                        <div className="p-2">
-                          <div className="text-xs font-semibold truncate" style={{color:brand.textColor}}>{c.content_title || c.format}</div>
-                          <div className="text-[10px]" style={{color:`${brand.textColor}66`}}>{c.platform} • {formatNumber(m?.views||0)} • {formatPercent(m ? (m.interactions/m.views*100) : null,1)}</div>
+                  {(() => {
+                    const infMetricsPool = inf.contents.map((c:any)=>metricsByContent.get(c.content_id)).filter((m): m is Metrics => !!m);
+                    return inf.contents.map((c:any)=>{
+                      const m = metricsByContent.get(c.content_id);
+                      return (
+                        <div key={c.content_id} className="rounded-xl border overflow-hidden" style={{borderColor:`${brand.primaryColor}10`}}>
+                          <ContentHighlightCard
+                            content={c}
+                            influencer={inf.influencer}
+                            metrics={m}
+                            comparisonSet={infMetricsPool}
+                            primaryColor={brand.primaryColor}
+                            imageHeightClass="h-24"
+                          />
+                          <div className="p-2">
+                            <div className="text-xs font-semibold truncate" style={{color:brand.textColor}}>{c.content_title || c.format}</div>
+                            <div className="text-[10px]" style={{color:`${brand.textColor}66`}}>{c.platform} • {formatNumber(m?.views||0)} • {formatPercent(m ? (m.interactions/m.views*100) : null,1)}</div>
+                          </div>
                         </div>
-                      </div>
-                    );
-                  })}
+                      );
+                    });
+                  })()}
                 </div>
               </ChartCard>
 
@@ -590,23 +626,29 @@ export const InfluencerDashboard: React.FC<{ brand: BrandConfig; onBack: () => v
 
         {contentView==="gallery" ? (
           <div className="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-4 gap-3">
-            {filtered.map(({content, influencer, metrics, er})=>(
-              <div key={content.content_id} onClick={()=> setSelectedContent(content.content_id)} className="rounded-2xl border overflow-hidden cursor-pointer hover:shadow-md transition-all" style={{backgroundColor:brand.cardBg, borderColor:`${brand.primaryColor}15`}}>
-                <div className="relative">
-                  <ContentThumb src={content.thumbnail_url} alt={content.content_title} className="w-full h-32 object-cover" primaryColor={brand.primaryColor} />
-                  <span className="absolute top-2 left-2 text-[10px] px-1.5 py-0.5 rounded-full text-white" style={{backgroundColor: content.platform==="Instagram" ? "#E4405F" : content.platform==="TikTok" ? "#000" : "#1877F2"}}>{content.platform}</span>
-                  <span className="absolute top-2 right-2 text-[10px] px-1.5 py-0.5 rounded-full" style={{backgroundColor:`${brand.primaryColor}`, color:"#fff"}}>{content.format}</span>
-                </div>
-                <div className="p-2">
-                  <div className="text-xs font-semibold truncate" style={{color:brand.textColor}}>{content.content_title || content.format}</div>
-                  <div className="text-[10px] flex items-center gap-1" style={{color:`${brand.textColor}66`}}><InfluencerAvatar influencer={influencer} size={16} brandColor={brand.primaryColor} />{influencer?.influencer_name}</div>
-                  <div className="flex gap-2 mt-1 text-[10px]">
-                    <span style={{color:brand.textColor}}><b>{formatNumber(metrics?.views||0)}</b> views</span>
-                    <span style={{color:`${brand.textColor}66`}}>{formatPercent(er,1)} ER</span>
+            {(() => {
+              const filteredMetricsPool = filtered.map(f=>f.metrics).filter((m): m is Metrics => !!m);
+              return filtered.map(({content, influencer, metrics, er})=>(
+                <div key={content.content_id} onClick={()=> setSelectedContent(content.content_id)} className="rounded-2xl border overflow-hidden cursor-pointer hover:shadow-md transition-all" style={{backgroundColor:brand.cardBg, borderColor:`${brand.primaryColor}15`}}>
+                  <ContentHighlightCard
+                    content={content}
+                    influencer={influencer}
+                    metrics={metrics}
+                    comparisonSet={filteredMetricsPool}
+                    primaryColor={brand.primaryColor}
+                    imageHeightClass="h-32"
+                  />
+                  <div className="p-2">
+                    <div className="text-xs font-semibold truncate" style={{color:brand.textColor}}>{content.content_title || content.format}</div>
+                    <div className="text-[10px] flex items-center gap-1" style={{color:`${brand.textColor}66`}}><InfluencerAvatar influencer={influencer} size={16} brandColor={brand.primaryColor} />{influencer?.influencer_name}</div>
+                    <div className="flex gap-2 mt-1 text-[10px]">
+                      <span style={{color:brand.textColor}}><b>{formatNumber(metrics?.views||0)}</b> views</span>
+                      <span style={{color:`${brand.textColor}66`}}>{formatPercent(er,1)} ER</span>
+                    </div>
                   </div>
                 </div>
-              </div>
-            ))}
+              ));
+            })()}
           </div>
         ) : (
           <div className="overflow-auto rounded-2xl border" style={{borderColor:`${brand.primaryColor}15`, backgroundColor:brand.cardBg}}>
@@ -624,7 +666,7 @@ export const InfluencerDashboard: React.FC<{ brand: BrandConfig; onBack: () => v
               <tbody>
                 {filtered.map(({content, influencer, metrics, er})=>(
                   <tr key={content.content_id} className="border-t hover:opacity-70 cursor-pointer" style={{borderColor:`${brand.primaryColor}08`}} onClick={()=> setSelectedContent(content.content_id)}>
-                    <td className="px-3 py-2 flex items-center gap-2"><ContentThumb src={content.thumbnail_url} className="w-8 h-8 rounded object-cover" primaryColor={brand.primaryColor} /><span style={{color:brand.textColor}}>{content.content_title || content.format}</span></td>
+                    <td className="px-3 py-2 flex items-center gap-2"><PlatformIcon platform={content.platform} size={24} /><span style={{color:brand.textColor}}>{content.content_title || content.format}</span></td>
                     <td className="px-3 py-2" style={{color:brand.textColor}}>{influencer?.influencer_name}</td>
                     <td className="px-3 py-2" style={{color:brand.textColor}}>{content.platform} • {content.format}</td>
                     <td className="px-3 py-2 text-right" style={{color:brand.textColor}}>{formatNumber(metrics?.views||0)}</td>
